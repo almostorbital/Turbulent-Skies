@@ -131,6 +131,7 @@ cutUI.appendChild(cutFlash);
 const CRASH_LINES = {
   apart: ['Flight 404 is shedding parts faster than it can lose them.', 'The plane is now more of a suggestion than a plane.', 'Somewhere, a bolt lets go. Then all the other bolts.'],
   empty: ['With nobody left on board, Flight 404 loses the will to fly.', 'An empty plane. A lonely captain. A very long way down.', 'The last passenger waves from their parachute.'],
+  mayday: ['MAYDAY, MAYDAY… the dive was too steep.', 'Everything went dark. Then everything went down.'],
   ground: ['Captain, that was the sea. The sea was not the runway.', 'The altimeter said PULL UP. The captain said "nah".', 'Straight down. On purpose. Bold.'],
   fuel: ['The engines cough. Splutter. Stop. Nobody filled up.', 'The fuel gauge says E. E is for Eek.', 'Turns out planes do need fuel. Who knew?'],
   mutiny: ['The passengers have taken over. Nobody knows how to fly.', 'From inside the lavatory, the captain hears the engines stop.', '"Does anyone know what this button does?"'],

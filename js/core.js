@@ -121,12 +121,15 @@ addEventListener('resize', () => {
 
 const hemi = new THREE.HemisphereLight(0xdfefff, 0x445566, 0.75);
 scene.add(hemi);
-scene.add(new THREE.AmbientLight(0xffffff, 0.25));
+const ambient = new THREE.AmbientLight(0xffffff, 0.25);
+scene.add(ambient);
 const sun = new THREE.DirectionalLight(0xffffff, 0.8);
 sun.position.set(80, 150, 60);
 scene.add(sun);
 const cabinLights = [];
-for (const z of [-7.3, -2.5, 2.5, 9]) {
+// the red emergency lights (MAYDAY): two in the cabin, flashing
+const alarmLights = [-1.5, 2].map(z => { const l = new THREE.PointLight(0xff1a1a, 0, 9); l.position.set(0, 2.0, z); plane.add(l); return l; });
+for (const z of [-7.3, -2.5, 2.5, 9].map(z => z * K)) {
   const l = new THREE.PointLight(0xfff1dd, 0.5, 16);
   l.position.set(0, Math.min(2.8, ceilAt(z) - 0.4), z);
   plane.add(l); cabinLights.push(l);
@@ -276,7 +279,7 @@ function station(id, name, area, mesh, extra = {}) {
 // ---------------------------------------------------------------- game state
 const S = {
   running: false, paused: false, over: false, view: 'first', phase: 'airport', t: 0, dist: 0, integrity: 100, seatbelt: false, flying: false, driving: null,
-  toT: 0, toSpeed: 0, liftoff: false, alt: 0, pitch: 0, fuel: 100, tankerT: 0,
+  toT: 0, toSpeed: 0, liftoff: false, alt: 0, pitch: 0, fuel: 100, tankerT: 0, clock: 0.3, maydayDone: false,
   turb: 0, flash: 0, shake: 0, roll: 0, gust: 0, gustT: 0,
   needs: { calm: 90, hunger: 85, bored: 85, comfort: 85 },
   faults: [], nextFault: 28, firstFault: true, nextStorm: 45, stormOn: false,

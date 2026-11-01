@@ -34,6 +34,9 @@ function updateFlight(dt, speed, prog) {
     }
     const empty = S.fuel <= 0 && !landing;
     if (empty && !S.emptySaid) { S.emptySaid = true; setEngine('L', 'dead'); setEngine('R', 'dead'); say('⛽ OUT OF FUEL! Both engines have stopped. We\'re going down!', 'bad'); }
+    // the big emergency, once a flight, about halfway
+    if (!landing && !S.maydayDone && S.dist > TOTAL * 0.45) { S.maydayDone = true; spawnFault('mayday', null, true); }
+    const mayday = S.faults.find(f => f.id === 'mayday');
     // steering (or the autopilot gently levelling out). You can dive all the way down… into the sea.
     if (piloted()) {
       const k = pilotKeys();
@@ -43,6 +46,7 @@ function updateFlight(dt, speed, prog) {
       PW.vy += ((ty > 0 ? 25 : ty < 0 ? -40 : 0) - PW.vy) * Math.min(1, dt * 1.4);
     } else { PW.vx *= Math.max(0, 1 - dt * 0.8); PW.vy *= Math.max(0, 1 - dt * 0.8); }
     if (empty) PW.vy += (-18 - PW.vy) * Math.min(1, dt * 0.6);   // (gliding down, engines dead)
+    if (mayday) PW.vy += (-5 - PW.vy) * Math.min(1, dt * 0.8);   // (diving, until someone pulls out of it)
     PW.x += PW.vx * dt;
     PW.y = Math.min(PW.y + PW.vy * dt, 220);
     if (PW.y >= 220) PW.vy = Math.min(0, PW.vy);
@@ -186,7 +190,10 @@ function updateEffects(dt, flight) {
   }
   const elec = S.faults.some(f => f.id === 'elec');
   if (elec && Math.random() < dt * 6) for (let i = 0; i < 6; i++) emitLocal(fireFx, rand(-.5, .5), ceilAt(CPT.z + 0.2) - 0.35, CPT.z + 0.2, rand(-2, 2), rand(-3, 0), rand(-2, 2), 0xfff066, .08, .4, 0);
-  for (const l of cabinLights) l.intensity = elec ? (Math.random() < .3 ? 0.05 : 0.45) : 0.5;
+  const dark = S.faults.some(f => f.id === 'mayday' && f.step < 3);   // (the power's out until it's reset)
+  const alarm = S.faults.some(f => f.id === 'mayday');
+  alarmLights.forEach((l, i) => { l.intensity = alarm && Math.sin(S.t * 7 + i * Math.PI) > 0 ? 2.2 : 0; });
+  for (const l of cabinLights) l.intensity = dark ? (Math.random() < .04 ? 0.4 : 0.03) : elec ? (Math.random() < .3 ? 0.05 : 0.45) : 0.5 + (1 - DAY.light) * 0.25;
   M.lamp.color.setHex(elec && Math.random() < .3 ? 0x333333 : 0xfff3d6);
   for (const b of beltSigns) b.material = S.seatbelt ? M.yellow : M.dark;
   for (const n of navLights) n.m.visible = (S.t % n.blink) < 0.12;
@@ -369,14 +376,15 @@ function update(dt) {
   }
 
   // --- sky & fog (thick grey soup inside a storm)
-  const k = Math.pow(prog, 1.6);
-  scene.background.copy(SKY_A).lerp(SKY_B, k).lerp(SKY_STORM, Math.max(sky.stormNear * 0.75, S.turb));
+  updateDayNight(dt, scene.background);
+  scene.background.lerp(SKY_STORM, Math.max(sky.stormNear * 0.75, S.turb));
   scene.fog.color.copy(scene.background);
   scene.fog.near = 400 - S.turb * 395;
   scene.fog.far = 2600 - S.turb * 2440;
   S.flash = Math.max(0, S.flash - dt * 2.5);
-  hemi.intensity = 0.75 + S.flash * 1.5 - sky.stormNear * 0.35;
-  sun.intensity = 0.8 - sky.stormNear * 0.5;
+  ambient.intensity = 0.1 + 0.15 * DAY.light;
+  hemi.intensity = 0.2 + 0.55 * DAY.light + S.flash * 1.5 - sky.stormNear * 0.35;
+  sun.intensity = (DAY.light > 0.15 ? 0.15 + 0.65 * DAY.light : 0.25) - sky.stormNear * 0.5;   // (by night it's the moon)
   if (windGain) windGain.gain.value = S.phase === 'airport' ? 0.01 : (!insideHull(P.x, P.z) ? 0.16 : 0.025) + openings * 0.04 + S.turb * 0.05;
 
   S.hudT -= dt;

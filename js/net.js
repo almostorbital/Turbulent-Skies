@@ -277,7 +277,7 @@ function buildSnap() {
     PW: [r2(PW.x), r2(PW.y)], PR: [plane.rotation.x, plane.rotation.z, plane.position.y],
     st: [storm.position.x, storm.position.y, storm.position.z, storm.visible ? 1 : 0],
     ap: [airport.position.y, airport.position.z, airport.visible ? 1 : 0], ap2: [airport2.position.x, airport2.position.y, airport2.position.z, airport2.visible ? 1 : 0], gear: gear.visible ? 1 : 0,
-    eng: ['L', 'R'].map(s => [engines[s].state, engines[s].leak ? 1 : 0]), fu: Math.round(S.fuel),
+    eng: ['L', 'R'].map(s => [engines[s].state, engines[s].leak ? 1 : 0]), fu: Math.round(S.fuel), ck: Math.round(S.clock * 1000) / 1000,
     wing: ['L', 'R'].map(s => [wings[s].attached ? 1 : 0, wings[s].patch.visible ? 1 : 0]),
     hole: hole.seg ? [segments.indexOf(hole.seg), hole.side] : null, segs: segBits,
     dr: [doors.L.target, doors.R.target, doors.L.open, doors.R.open, lavDoors.R.target, lavDoors.R.open, ramp.target, ramp.open, bus.door.target, bus.door.open].map(r2),
@@ -340,7 +340,7 @@ function applySnap(m) {
   airport.position.y = m.ap[0]; airport.position.z = m.ap[1]; airport.visible = !!m.ap[2];
   airport2.position.set(m.ap2[0], m.ap2[1], m.ap2[2]); airport2.visible = !!m.ap2[3]; gear.visible = !!m.gear;
   ['L', 'R'].forEach((s, i) => {
-    engines[s].state = m.eng[i][0]; engines[s].leak = !!m.eng[i][1]; if (m.fu !== undefined) S.fuel = m.fu;
+    engines[s].state = m.eng[i][0]; engines[s].leak = !!m.eng[i][1]; if (m.fu !== undefined) S.fuel = m.fu; if (m.ck !== undefined) S.clock = m.ck;
     if (!m.wing[i][0] && wings[s].attached) detachPanel(s);
     wings[s].patch.visible = !!m.wing[i][1];
   });

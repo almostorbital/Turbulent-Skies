@@ -76,6 +76,28 @@ const DEFS = {
     start: () => {}, resolve: () => {},
     fail: () => { S.needs.comfort -= 35; say('The whole plane smells... unforgettable.', 'bad'); },
   },
+  // MAYDAY: the big one (once a flight, about halfway). Total power failure: both engines stop, the lights go
+  // out, and the plane noses over into a dive. Restart both engines, reset the power, then pull out of the dive.
+  mayday: {
+    noRandom: true, drain: 0.9, deadline: 75, penalty: 100,
+    title: () => '🚨 MAYDAY! TOTAL POWER FAILURE',
+    steps: [
+      { label: 'Restart the left engine', at: 'engL', type: 'hold', dur: 3 },
+      { label: 'Restart the right engine', at: 'engR', type: 'hold', dur: 3 },
+      { label: 'Reset the main power (overhead panel)', at: 'overhead', type: 'hold', dur: 2.5 },
+      { label: 'PULL OUT OF THE DIVE! (captain\'s yoke)', at: 'yoke', type: 'hold', dur: 2.5 },
+    ],
+    start: () => {
+      setEngine('L', 'fail'); setEngine('R', 'fail');
+      S.flash = 1; S.shake = 2; jerk(1.5); S.needs.calm -= 30;
+      say('🚨🚨 MAYDAY! MAYDAY! Both engines have stopped and the power is out! We\'re going DOWN!', 'bad');
+      sweep(900, 300, 1.2, 'sawtooth', 0.1);
+    },
+    // the engines come back one by one as you restart them
+    tick: f => { if (f.step >= 1 && engines.L.state === 'fail') setEngine('L', 'ok'); if (f.step >= 2 && engines.R.state === 'fail') setEngine('R', 'ok'); },
+    resolve: () => { S.needs.calm = Math.min(100, S.needs.calm + 40); S.integrity = Math.min(100, S.integrity + 10); say('🎉 YOU SAVED FLIGHT 404! The passengers are cheering (and some are crying).', 'good'); chime(); },
+    fail: () => { S.integrity = 0; say('💥 It was too late. Flight 404 came apart in the dive.', 'bad'); },
+  },
   // a flock of birds flies into an engine: it stalls, stuffed with feathers (pull them out, or it catches fire)
   birds: {
     group: 'eng', sided: true, drain: 0.4, deadline: 55, penalty: 8,

@@ -77,3 +77,39 @@ function stormInfo() {
   const lateral = Math.hypot(dx / STORM_RX, dy / STORM_RY);
   return { dx, dy, z, lateral, inside: Math.abs(z) < STORM_RZ && lateral < 1 };
 }
+
+// ---------------------------------------------------------------- day and night
+// The sun goes round once every DAY_LEN seconds: day, a golden sunset, a starry night, then sunrise.
+// (S.clock: 0 midnight · 0.25 sunrise · 0.5 noon · 0.75 sunset. The host keeps everyone's clock in step.)
+const DAY_LEN = 300;
+const DAY = { light: 1, twilight: 0 };
+const SKY_NIGHT = new THREE.Color(0x0a1226), SKY_DAWN = new THREE.Color(0xf08a5a);
+const OCEAN_DAY = new THREE.Color(0xffffff), OCEAN_NIGHT = new THREE.Color(0x2a3550);
+const CLOUD_DAY = new THREE.Color(0xffffff), CLOUD_NIGHT = new THREE.Color(0x4a5470);
+const SUN_DAY = new THREE.Color(0xffffff), SUN_DUSK = new THREE.Color(0xffb070), MOON = new THREE.Color(0x8fa6d8);
+const stars = (() => {
+  const pos = [];
+  for (let i = 0; i < 900; i++) {
+    const u = Math.random() * 2 - 1, a = Math.random() * Math.PI * 2, r = 3000, h = Math.abs(u) * 0.95 + 0.05;   // (the upper half of the sky)
+    pos.push(Math.cos(a) * Math.sqrt(1 - h * h) * r, h * r, Math.sin(a) * Math.sqrt(1 - h * h) * r);
+  }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  const p = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xffffff, size: 2, sizeAttenuation: false, transparent: true, opacity: 0, fog: false, depthWrite: false }));
+  scene.add(p); return p;
+})();
+const _camW = new THREE.Vector3();
+// sets the sky colour (before storms and the rest are added on top) and the light
+function updateDayNight(dt, base) {
+  if (!isClient()) S.clock = (S.clock + dt / DAY_LEN) % 1;
+  const h = Math.sin((S.clock - 0.25) * Math.PI * 2);            // how high the sun is: 1 noon, -1 midnight
+  DAY.light = clamp(h * 1.6 + 0.35, 0, 1);
+  DAY.twilight = clamp(1 - Math.abs(h) * 3.2, 0, 1);
+  base.copy(SKY_NIGHT).lerp(SKY_A, DAY.light).lerp(SKY_DAWN, DAY.twilight * 0.55);
+  sun.color.copy(DAY.light > 0.15 ? SUN_DAY : MOON).lerp(SUN_DUSK, DAY.twilight * 0.7);
+  sun.position.set(Math.cos(S.clock * Math.PI * 2 - Math.PI / 2) * 160, Math.max(30, Math.abs(h) * 150), 60);
+  ocean.material.color.copy(OCEAN_NIGHT).lerp(OCEAN_DAY, DAY.light);
+  cloudMat.color.copy(CLOUD_NIGHT).lerp(CLOUD_DAY, DAY.light).lerp(SUN_DUSK, DAY.twilight * 0.6);
+  camera.getWorldPosition(_camW); stars.position.copy(_camW);
+  stars.material.opacity = clamp(1 - DAY.light * 1.6, 0, 1);
+  stars.visible = stars.material.opacity > 0.01;
+}
