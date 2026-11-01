@@ -29,6 +29,7 @@ function cargoUse(it) {
   if (k === BAGS.mystery && !it.opened) return { label: 'open the mystery box', done: () => openMystery(it) };
   if (k === BAGS.cat && !it.caged) return { label: 'pet the cat', done: () => petCat(it) };
   if (k === BAGS.nuke && !it.armed) return { label: 'press the big red button', done: () => armNuke(it) };
+  if (k === BAGS.miniplane) return { label: 'fly the mini plane', local: true, done: () => startMini(it) };
   return null;
 }
 function sharePizza(it) {
@@ -76,6 +77,24 @@ function nukeLooks(x, y, z) {
   for (let i = 0; i < 70; i++) { const a = rand(0, 6.3); emitLocal(smokeFx, x, y + 10, z, Math.cos(a) * rand(2, 6), rand(4, 7), Math.sin(a) * rand(2, 6), pick([0x888888, 0x666666, 0xaa8866]), rand(3, 5), rand(3, 5), 2.5, 0.85); }
   beep(38, 2.8, 'sawtooth', 0.25); setTimeout(() => sweep(120, 30, 2.0, 'square', 0.12), 120);
 }
+// the bus explodes: a fireball, bits flying off, and it's thrown into the air and comes down burnt black
+// (still drivable, just about). Plays on everyone's screen.
+const charred = std(0x2a2522, { roughness: 1 });
+function busBoom() {
+  const bx = bus.x, bz = bus.z, by = GROUND + 1.6;
+  for (let i = 0; i < 120; i++) emitLocal(fireFx, bx + rand(-2, 2), by, bz + rand(-4, 4), rand(-10, 10), rand(2, 16), rand(-10, 10), pick([0xffee88, 0xffaa22, 0xff5511]), rand(1, 2.5), rand(0.5, 1.2), 2);
+  for (let i = 0; i < 60; i++) emitLocal(smokeFx, bx + rand(-2, 2), by + 1, bz + rand(-4, 4), rand(-3, 3), rand(3, 8), rand(-3, 3), 0x333333, rand(2, 3.5), rand(2, 4), 2, 0.85);
+  // a few pieces fly off
+  const parts = []; bus.g.traverse(o => { if (o.isMesh && !bus.wheels.includes(o)) parts.push(o); });
+  for (let i = 0; i < 6 && parts.length; i++) {
+    const m = parts.splice(Math.floor(Math.random() * parts.length), 1)[0].clone();
+    m.material = charred; m.position.y += 0; bus.g.add(m); m.updateMatrixWorld(true);
+    toDebris(m, new THREE.Vector3(rand(-14, 14), rand(10, 22), rand(-14, 14)), 5);
+  }
+  bus.g.traverse(o => { if (o.isMesh && o.material !== M.hit && !(o.material && o.material.transparent)) o.material = charred; });
+  bus.boomT = 0; bus.burnT = 30;
+  beep(60, 1.2, 'sawtooth', 0.2);
+}
 function nukeBoom(it) {
   const holder = it.holder || null;
   const x = it.x, y = it.y + 0.4, z = it.z;
@@ -100,6 +119,8 @@ function nukeBoom(it) {
     if (o.state === 'held' && o.holder) { o.holder.held = null; o.holder = null; }
     const a = away(o.x, o.z, 14); o.state = 'free'; o.vx = a.vx; o.vz = a.vz; o.vy = a.up + 2;
   }
+  // the bus goes up too, if it's anywhere near
+  if (S.phase === 'airport' && Math.hypot(bus.x - x, bus.z - z) < 45) { netEvent('busboom'); busBoom(); }
   // vehicles skid away; players get launched
   if (S.phase === 'airport') for (const v of vehicles) { const a = away(v.x, v.z, 2.5); if (a.k > 0) for (let n = 0; n < 6; n++) shoveVehicle(v, a.vx / 6, a.vz / 6); }
   for (const w of [LOCAL, ...NET.remotes]) {

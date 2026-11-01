@@ -58,17 +58,19 @@ function hullSegment(z0, z1, [w0, w1]) {
   // the cabin walls, in rings, one round each window
   const ringEnds = [GALLEY, ...WINDOWS.slice(1).map((w, i) => (WINDOWS[i][1] + w[0]) / 2), CARGO];
   WINDOWS.forEach((w, i) => hullSegment(ringEnds[i], ringEnds[i + 1], w));
-  // the floor, following the walls as the nose and tail narrow
+  // the carpet, a thin layer on the model's own floor; it follows the walls as the nose and tail narrow
+  // (and stays well inside them there, where the plane's sides curve in under the floor)
+  const floorHW = z => hullHW(z) + 0.04 - 0.21 * clamp((z - 2.4) / 0.6, 0, 1) - 0.21 * clamp((-4.4 - z) / 0.6, 0, 1);
   const fl = new THREE.Shape(), zs = [];
   for (let z = NOSE - 0.6; z < REAR; z += 0.25) zs.push(z);
   zs.push(REAR);
-  zs.forEach((z, i) => i ? fl.lineTo(hullHW(z) + 0.04, z) : fl.moveTo(hullHW(z) + 0.04, z));
-  for (let i = zs.length - 1; i >= 0; i--) fl.lineTo(-hullHW(zs[i]) - 0.04, zs[i]);
-  const floorGeo = new THREE.ExtrudeGeometry(fl, { depth: 0.2, bevelEnabled: false, curveSegments: 1 });
-  floorGeo.rotateX(Math.PI / 2);
+  zs.forEach((z, i) => i ? fl.lineTo(floorHW(z), z) : fl.moveTo(floorHW(z), z));
+  for (let i = zs.length - 1; i >= 0; i--) fl.lineTo(-floorHW(zs[i]), zs[i]);
+  const floorGeo = new THREE.ExtrudeGeometry(fl, { depth: 0.04, bevelEnabled: false, curveSegments: 1 });
+  floorGeo.rotateX(Math.PI / 2); floorGeo.translate(0, 0.012, 0);
   plane.add(new THREE.Mesh(floorGeo, M.carpet));
-  box(1.0, 0.012, CARGO - GALLEY, M.runner, 0, 0.006, (GALLEY + CARGO) / 2);
-  for (const z of [DOOR_Z0 + 0.05, DOOR_Z1 - 0.05]) box(2 * W - 0.6, 0.014, 0.08, M.yellow, 0, 0.007, z);   // exit door markings
+  box(1.0, 0.012, CARGO - GALLEY, M.runner, 0, 0.018, (GALLEY + CARGO) / 2);
+  for (const z of [DOOR_Z0 + 0.05, DOOR_Z1 - 0.05]) box(2 * W - 0.6, 0.014, 0.08, M.yellow, 0, 0.019, z);   // exit door markings
 
   // the cockpit bulkhead, with a wide gap in it, just behind the model's own partition walls
   const bh = hullHW(BULK) + 0.05, bt = ceilAt(BULK) + 0.05, gap = 1.01 * K;
@@ -190,6 +192,17 @@ function hullSegment(z0, z1, [w0, w1]) {
   }
   // the model's toilet, in its bathroom
   station('lavR', 'Toilet', 'Bathroom', box(0.6, 0.7, 0.7, M.hit, BATH.toilet.x, 0.35, BATH.toilet.z));
+  // and a door for it, in a wall across its open side (hinged at the front, swinging out into the aisle)
+  const LH = 2.2, DWB = 0.8, bd0 = BATH.z0 + 0.15, bd1 = bd0 + DWB;
+  box(0.06, LH, bd0 - BATH.z0, M.lavWall, BATH.x0, LH / 2, (BATH.z0 + bd0) / 2);
+  box(0.06, LH, BATH.z1 - bd1, M.lavWall, BATH.x0, LH / 2, (bd1 + BATH.z1) / 2);
+  box(0.06, LH - 1.85, DWB, M.lavWall, BATH.x0, (LH + 1.85) / 2, (bd0 + bd1) / 2);
+  const bdh = new THREE.Group(); bdh.position.set(BATH.x0, 0, bd0); plane.add(bdh);
+  const bdoor = box(0.05, 1.85, DWB, M.lavWall, 0, 0.925, DWB / 2, bdh);
+  textPlane(0.3, 0.18, 'WC', '#2f6db5', '#fff', bdh, -0.035, 1.55, DWB / 2, -Math.PI / 2, 'bold 70px sans-serif');
+  box(0.08, 0.04, 0.12, M.steel, -0.05, 1.0, DWB - 0.1, bdh);
+  lavDoors.R = { hinge: bdh, open: 0, target: 0, x: BATH.x0, z0: bd0, z1: bd1, swing: -1.5 };
+  station('lavdoorR', 'Bathroom door', 'Cabin', bdoor, { lavDoor: 'R' });
 
   // ---- cabin: overhead bins, lights, seats, movie screen
   const binZ = (GALLEY + CARGO) / 2, binL = CARGO - GALLEY - 0.4, BIN_Y = WIN_Y1 + 0.3;
@@ -252,8 +265,7 @@ function hullSegment(z0, z1, [w0, w1]) {
     wings[side] = { panel, patch, attached: true };
     station('tip' + side, Side + ' wing tip', Side + ' wing', box(1.2, 1.0, te(WING_IN) - le(WING_IN) - 0.2, M.hit, s * (WING_IN - 0.4), wingY(WING_IN, inZ) + 0.4, inZ));
     const fy = wingY(FUEL_X, FUEL_Z);
-    cyl(0.22, 0.22, 0.1, M.yellow, s * FUEL_X, fy + 0.03, FUEL_Z);
-    station('fuel' + side, Side + ' fuel line', Side + ' wing', box(0.9, 0.6, 0.9, M.hit, s * FUEL_X, fy + 0.25, FUEL_Z));
+    station('fuel' + side, Side + ' fuel pipe', Side + ' wing', box(0.9, 0.6, 0.9, M.hit, s * FUEL_X, fy + 0.25, FUEL_Z));
 
     // the engine: the model's nacelle and propeller get put in here when it loads
     const eng = new THREE.Group();
@@ -262,19 +274,27 @@ function hullSegment(z0, z1, [w0, w1]) {
     const prop = new THREE.Group(); prop.position.z = PROP_Z - ENG_Z; eng.add(prop);
     const disc = new THREE.Mesh(new THREE.CircleGeometry(2.1, 32), new THREE.MeshBasicMaterial({ color: 0x222222, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false }));
     disc.position.z = PROP_Z - ENG_Z - 0.05; eng.add(disc);
-    // the service hatch over the recess in the top of the model's engine (on the side towards the cabin):
-    // it swings open when the engine breaks, showing the works inside
-    const inb = -s, HR = 2.04 * K, A0 = 20 * D2R, A1 = 60 * D2R, HZ0 = -6.47 * K - ENG_Z, HZ1 = -4.55 * K - ENG_Z;
-    const hinge = new THREE.Group(); hinge.position.set(inb * HR * Math.sin(A0), HR * Math.cos(A0), (HZ0 + HZ1) / 2); eng.add(hinge);
-    const dx = inb * HR * (Math.sin(A1) - Math.sin(A0)), dy = HR * (Math.cos(A1) - Math.cos(A0)), chord = Math.hypot(dx, dy);
-    const lid = box(0.06, chord, HZ1 - HZ0, M.hull, dx / 2, dy / 2, 0, hinge); lid.rotation.z = Math.atan2(-dx, dy);
-    box(0.05, 0.08, 0.3, M.dark, dx * 0.85, dy * 0.85, 0, hinge);                     // handle
-    const works = new THREE.Group(); eng.add(works);                                    // what's under it
-    const mid = (A0 + A1) / 2, wr = 1.45 * K, kx = inb * wr * Math.sin(mid), ky = wr * Math.cos(mid);
-    for (let i = 0; i < 4; i++) cyl(0.16 * K, 0.16 * K, 0.35 * K, M.steel, kx, ky, HZ0 + (0.35 + i * 0.4) * K, works).rotation.z = Math.PI / 2 - inb * mid;
-    cyl(0.05, 0.05, HZ1 - HZ0 - 0.2, M.red, kx + inb * 0.25 * K, ky + 0.1 * K, (HZ0 + HZ1) / 2, works).rotation.x = Math.PI / 2;
-    cyl(0.05, 0.05, HZ1 - HZ0 - 0.2, M.yellow, kx - inb * 0.1 * K, ky + 0.3 * K, (HZ0 + HZ1) / 2, works).rotation.x = Math.PI / 2;
-    engines[side] = { group: eng, prop, disc, spin: 10, state: 'ok', acc: 0, leak: false, hatch: { hinge, open: 0, way: inb } };
+    // the service hatch over the recess in the top of the model's engine (on the side towards the cabin): a
+    // curved panel that fits the engine's round side, hinged along its top edge. It swings open when the
+    // engine breaks, showing the works inside. (hatchRoot is moved onto the model engine's own middle once it loads)
+    const inb = -s, HR = 2.25 * K, A0 = 16 * D2R, A1 = 68 * D2R, HZ0 = -6.5 * K - ENG_Z, HZ1 = -4.52 * K - ENG_Z, HL = HZ1 - HZ0;
+    const hatchRoot = new THREE.Group(); hatchRoot.position.z = (HZ0 + HZ1) / 2; eng.add(hatchRoot);
+    const edge = new THREE.Vector3(inb * HR * Math.sin(A0), HR * Math.cos(A0), 0);
+    const hinge = new THREE.Group(); hinge.position.copy(edge); hatchRoot.add(hinge);
+    // (a cylinder's surface, turned to lie along the engine: angle a from straight up becomes theta = PI - a)
+    const tS = inb > 0 ? Math.PI - A1 : Math.PI + A0, shell = new THREE.CylinderGeometry(HR, HR, HL, 10, 1, true, tS, A1 - A0);
+    shell.rotateX(Math.PI / 2); shell.translate(-edge.x, -edge.y, 0);
+    const lidMat = std(0x8fa3b8, { roughness: .5, metalness: .25, side: THREE.DoubleSide });
+    hinge.add(new THREE.Mesh(shell, lidMat));
+    const am = (A0 + A1) / 2, lo = new THREE.Vector3(inb * HR * Math.sin(A1), HR * Math.cos(A1), 0).sub(edge);
+    box(0.05, 0.05, 0.3, M.dark, lo.x * 0.92 + inb * 0.03 * Math.sin(A1), lo.y * 0.92 + 0.03 * Math.cos(A1), 0, hinge);   // handle, in the middle of the bottom edge
+    for (const z of [-HL / 2 + 0.08, HL / 2 - 0.08]) box(0.04, 0.04, 0.06, M.dark, 0, 0, z, hinge);                      // hinge pins
+    const works = new THREE.Group(); hatchRoot.add(works);                              // what's under it
+    const wr = 1.45 * K, kx = inb * wr * Math.sin(am), ky = wr * Math.cos(am);
+    for (let i = 0; i < 4; i++) cyl(0.16 * K, 0.16 * K, 0.35 * K, M.steel, kx, ky, -HL / 2 + (0.35 + i * 0.4) * K, works).rotation.z = Math.PI / 2 - inb * am;
+    cyl(0.05, 0.05, HL - 0.6, M.red, kx + inb * 0.25 * K, ky + 0.1 * K, 0, works).rotation.x = Math.PI / 2;
+    cyl(0.05, 0.05, HL - 0.6, M.yellow, kx - inb * 0.1 * K, ky + 0.3 * K, 0, works).rotation.x = Math.PI / 2;
+    engines[side] = { group: eng, prop, disc, spin: 10, state: 'ok', acc: 0, leak: false, hatch: { root: hatchRoot, hinge, open: 0, way: inb } };
     station('eng' + side, Side + ' engine', Side + ' wing', nac);
   }
 
@@ -534,8 +554,6 @@ function dressPlane(scene) {
   }
   if (!tris.length) tris = boxyPlaneTris();
   tris.forEach(triInfo);
-  // the model's own cabin floor goes: the game lays its carpet there
-  tris = tris.filter(t => !(Math.abs(t.n.y) > 0.9 && Math.abs(t.c.y) < 0.05 && Math.abs(t.c.x) < HULL_X - 0.05 && t.c.z > NOSE - 1 && t.c.z < REAR));
   // cut along every line where the skin gets split up or painted
   const side = t => Math.abs(t[0].x) > HULL_X - 0.3 || Math.abs(t[1].x) > HULL_X - 0.3 || Math.abs(t[2].x) > HULL_X - 0.3;
   tris = splitTris(tris, 2, [...new Set(segments.flatMap(sg => [sg.z0, sg.z1]))], side);
@@ -563,7 +581,7 @@ function dressPlane(scene) {
     else parts.main.push(t);
   }
   const body = t => Math.abs(t.c.x) <= HULL_X + 0.15 && t.c.z < 21.2;
-  const fin = t => t.c.z > 16 * K && t.c.y > 3.45 * K && Math.abs(t.c.x) < 0.4 * K;
+  const fin = t => t.c.z > 19.2 * K && t.c.y > 2.95 * K && Math.abs(Math.abs(t.c.x) - 8.18 * K) < 0.5 * K;   // (the two tail fins, on the ends of the tailplane)
   // (the model's walls have some thickness, and it has inside walls of its own: anything inside the hull
   // gets cabin colours)
   const inner = t => Math.abs(t.c.x) < hullHW(t.c.z) - 0.02 && t.c.y > 0.02 && t.c.y < ceilAt(t.c.z) - 0.02 && t.c.z > NOSE - 1 && t.c.z < REAR + 7;
@@ -606,13 +624,15 @@ function dressPlane(scene) {
   if (parts.cockpit.length) plane.add(triMesh(parts.cockpit, PLANE_MAT.skin, cockpitPaint));
   for (const s of ['L', 'R']) skin(parts['wing' + s], wings[s].panel);
   glazeCockpit();
-  // the tail fin gets the flight number
+  // the tail fins get the flight number (on the outside of each) and a beacon on top
   const finBox = new THREE.Box3();
-  for (const t of tris) if (fin(t) && Math.abs(t.n.x) > 0.9) for (const v of t) finBox.expandByPoint(v);
-  if (finBox.isEmpty()) finBox.set(new THREE.Vector3(-0.1, 3.4 * K, 17 * K), new THREE.Vector3(0.1, 7 * K, 20.3 * K));
-  for (const s of [-1, 1]) textPlane(2.6 * K, 1.3 * K, '404', '#1f4fa8', '#ffd34a', plane, s * (finBox.max.x + 0.03), (finBox.min.y + finBox.max.y) / 2 + 0.2, (finBox.min.z + finBox.max.z) / 2 + 0.3, s * Math.PI / 2, 'bold 200px sans-serif');
-  const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8), new THREE.MeshBasicMaterial({ color: 0xff2222 }));
-  beacon.position.set(0, finBox.max.y + 0.1, (finBox.min.z + finBox.max.z) / 2); plane.add(beacon); navLights.push({ m: beacon, blink: 1.3 });
+  for (const t of tris) if (fin(t) && t.c.x > 0) for (const v of t) finBox.expandByPoint(v);
+  if (finBox.isEmpty()) finBox.set(new THREE.Vector3(7.9 * K, 3.1 * K, 19.4 * K), new THREE.Vector3(8.4 * K, 7 * K, 24 * K));
+  for (const s of [-1, 1]) {
+    textPlane(1.6 * K, 0.8 * K, '404', '#1f4fa8', '#ffd34a', plane, s * (finBox.max.x + 0.02), (finBox.min.y + finBox.max.y) / 2 + 0.1, (finBox.min.z + finBox.max.z) / 2, s * Math.PI / 2, 'bold 200px sans-serif');
+    const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), new THREE.MeshBasicMaterial({ color: 0xff2222 }));
+    beacon.position.set(s * (finBox.min.x + finBox.max.x) / 2, finBox.max.y + 0.08, (finBox.min.z + finBox.max.z) / 2); plane.add(beacon); navLights.push({ m: beacon, blink: 1.3 });
+  }
 
   // engines and propellers: each goes into its engine group, so it shakes, burns and spins with it
   const blades = { L: [], R: [] };
@@ -621,7 +641,10 @@ function dressPlane(scene) {
     const s = c.x < 0 ? 'L' : 'R', e = engines[s], blade = /^cube/i.test(o.name);
     const mesh = new THREE.Mesh(o.geometry, blade ? M.dark : M.hull);
     (blade ? blades[s] : []).push({ mesh, m, c });
-    if (!blade) { e.group.updateMatrix(); mesh.applyMatrix4(e.group.matrix.clone().invert().multiply(m)); e.group.add(mesh); }
+    if (!blade) {
+      e.group.updateMatrix(); mesh.applyMatrix4(e.group.matrix.clone().invert().multiply(m)); e.group.add(mesh);
+      e.hatch.root.position.x = c.x - e.group.position.x; e.hatch.root.position.y = c.y - e.group.position.y;   // (centred on this engine)
+    }
   }
   for (const s of ['L', 'R']) {
     const e = engines[s];

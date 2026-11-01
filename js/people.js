@@ -183,6 +183,13 @@ const BAGS = {
   banana: { name: 'banana peel', r: 0.12, extra: true, build: g => {
     const b = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.03, 6, 12, Math.PI * 0.9), mat(0xffe135)); b.rotation.x = Math.PI / 2; b.position.y = 0.03; g.add(b);
   } },
+  // a little plane (a copy of the big one: aircraft.js puts the model in once it loads). E on it in flight to fly it!
+  miniplane: { name: 'mini plane', r: 0.6, loose: true, build: g => {
+    const s = new THREE.Group(); g.add(s); g.userData.standIn = s;
+    const y = mat(0xffc83d);
+    box(0.3, 0.3, 1.4, y, 0, 0.3, 0, s); box(1.9, 0.06, 0.4, y, 0, 0.25, -0.1, s); box(0.7, 0.05, 0.2, y, 0, 0.45, 0.6, s); box(0.05, 0.3, 0.2, y, 0, 0.6, 0.6, s);
+    if (BAGS.miniplane && BAGS.miniplane.scene) queueMicrotask(() => { const it = items.find(i => i.g === g); if (it) miniModel(it, BAGS.miniplane.scene); });
+  } },
   meal: { name: 'meal tray', r: 0.2, extra: true, meal: true, build: g => {
     box(0.42, 0.03, 0.3, mat(0x7a8a99), 0, 0.03, 0, g);
     cyl(0.1, 0.1, 0.02, M.white, -0.08, 0.055, 0, g); sph(0.06, mat(0xd9a066), -0.08, 0.08, 0, g, [1.2, 0.5, 1]);   // chicken (or pasta?)
@@ -517,7 +524,7 @@ const PAX_COUNT = 20, PAX_NEEDED = 6;                // (a seat for each)
   // always one in reach. Any BAGS_NEEDED of them in the cargo bay will do.
   const spare = ['suitcase', 'backpack', 'briefcase', 'suitcase', 'backpack', 'briefcase', 'suitcase', 'backpack', 'briefcase', 'suitcase',
     'backpack', 'briefcase', 'suitcase', 'backpack', 'suitcase', 'briefcase', 'backpack', 'suitcase'];
-  for (const k of [...MANIFEST, ...spare, 'beachball', 'boombox', 'balloons', 'pizza', 'cat', 'mystery', 'popper', 'nuke', 'rubberchicken', 'blaster', 'bananagun']) spawnBag(BAGS[k]);
+  for (const k of [...MANIFEST, ...spare, 'beachball', 'boombox', 'balloons', 'pizza', 'cat', 'mystery', 'popper', 'nuke', 'rubberchicken', 'blaster', 'bananagun', 'miniplane']) spawnBag(BAGS[k]);
   buildPile();
   // the nuke starts out sitting on its own (red) trolley, by the others
   const nk = items.find(i => i.type === BAGS.nuke), w = nukeTrolley.whole;
@@ -654,6 +661,7 @@ function crocBreaksOut(it) {
 function updateItems(dt) {
   if (S.phase === 'airport') updateConveyor(dt);
   for (const it of items) {
+    if (it.state === 'mini') continue;   // (someone's flying it: aircraft.js)
     if (it.state === 'pile') {
       if (it.pileUnder.length && it.pileUnder.every(o => o.state !== 'pile')) { it.state = 'free'; it.vx = rand(-0.5, 0.5); it.vz = rand(-0.5, 0.5); it.vy = 0; }
       else continue;

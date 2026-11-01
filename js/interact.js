@@ -68,10 +68,10 @@ function actionFor(ud, who = LOCAL) {
   if (ud.drive) return S.phase === 'airport' ? { key: 'drive', type: 'press', ready: true, label: ud.drive.push ? `Grab the ${ud.drive.name} and push it` : `Sit down and drive the ${ud.drive.name}`, done: () => enterVehicle(ud.drive, who) } : null;
   if (ud.item) {
     const it = ud.item;
-    if (it.state === 'gone' || it.state === 'queue' || it.state === 'held' || it.state === 'grabbed') return null;
+    if (it.state === 'gone' || it.state === 'queue' || it.state === 'held' || it.state === 'grabbed' || it.state === 'mini') return null;
     // your hands pick things up (grab.js); E does whatever the thing does, if anything (cargo.js)
     const use = cargoUse(it);
-    return { key: 'grab', type: 'grab', ready: true, label: `grab the ${it.name}` + (use ? ` · <kbd>E</kbd>${use.label}` : ''), done: use ? use.done : undefined };
+    return { key: 'grab', type: 'grab', ready: true, label: `grab the ${it.name}` + (use ? ` · <kbd>E</kbd>${use.label}` : ''), done: use ? use.done : undefined, local: !!(use && use.local) };
   }
   if (ud.passenger) {
     const p = ud.passenger;
@@ -160,6 +160,7 @@ function setPrompt(html, dim) {
 const interactDown = () => interactMouse || keys.grab;
 function interact(dt) {
   $('holdbar').style.display = 'none';
+  if (P.mini) { setPrompt(`✈ <kbd>W</kbd> faster <kbd>S</kbd> slower · steer with the mouse · <kbd>E</kbd> land back in the big plane`, true); return; }
   const rDown = interactDown(), rise = rDown && !GRAB.mode;
   if (!rDown) GRAB.mode = null;
   if (rise && (S.driving || S.flying || S.held || carryingName() || carriedByName() || P.sitV)) { GRAB.mode = 'act'; S.press = true; }
@@ -455,6 +456,8 @@ function helpHTML() {
       <tr><td>${k_('Enter')} or ${k_('P')}</td><td>Resume</td></tr>
       <tr><td>Left mouse: <b>Interact</b></td><td>Use what you're pointing at (doors, seats, controls, repairs). Hold it on a bag, a passenger, a trolley or a wall and your hands grab it; let go to drop or throw</td></tr>
       <tr><td>Hold ${k_('R')}</td><td>Go floppy (you're a ragdoll!) — let go to get back up</td></tr>
+      <tr><td>${k_('E')} on the mini plane</td><td>In flight: fly it alongside! Mouse steers, ${k_('W')} faster, ${k_('S')} slower, ${k_('E')} to land back in the big plane</td></tr>
+      <tr><td>⛽ Fuel low</td><td>A tanker flies over the left wing: hold ${k_('E')} at the left fuel pipe to hook up its hose</td></tr>
       <tr><td>${k_('V')}</td><td>Switch between first person and third person</td></tr>
       <tr><td>${k_('H')}</td><td>This help screen</td></tr>
     </table></div>`;

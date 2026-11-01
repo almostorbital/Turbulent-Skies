@@ -76,6 +76,15 @@ const DEFS = {
     start: () => {}, resolve: () => {},
     fail: () => { S.needs.comfort -= 35; say('The whole plane smells... unforgettable.', 'bad'); },
   },
+  // fuel running low: a tanker plane flies up alongside and lowers its hose to the left wing's fuel pipe
+  refuel: {
+    noRandom: true, drain: 0, deadline: 70, penalty: 0,
+    title: () => '⛽ FUEL LOW: THE TANKER IS HERE',
+    steps: [{ label: 'Hook the tanker\'s hose into the left fuel pipe', at: 'fuelL', type: 'hold', dur: 3 }],
+    start: () => {},
+    resolve: () => { S.fuel = 100; netEvent('refueled'); tankerPump(); say('⛽ Hose connected! Filling up… The tanker crew waves.', 'good'); },
+    fail: () => { S.tankerT = 25; say('⛽ The tanker gave up and flew home. Fuel is getting VERY low!', 'bad'); },
+  },
   autopilot: {
     drain: 0.4, deadline: 35, penalty: 12,
     title: () => '🧭 AUTOPILOT DISENGAGED',
@@ -114,7 +123,7 @@ function spawnFault(id, side, force) {
 function randomFault() {
   // a battered plane starts shedding its walls
   if (S.integrity < 55 && Math.random() < 0.45 && spawnFault('hull')) return;
-  const ids = Object.keys(DEFS);
+  const ids = Object.keys(DEFS).filter(k => !DEFS[k].noRandom);
   for (let tries = 0; tries < 12; tries++) if (spawnFault(pick(ids))) return;
 }
 function endFault(f, failed) {

@@ -24,17 +24,30 @@ function updateFlight(dt, speed, prog) {
   const oldX = PW.x;
   if (H) {
     if (!landing) S.dist += dt * speed;
-    // steering (or the autopilot gently levelling out)
+    // fuel: the engines drink it (a leak drinks more); when it runs low a tanker comes to fill you up,
+    // and if it runs out the engines stop and down you go
+    if (!landing) {
+      const leaks = ['L', 'R'].filter(s => engines[s].leak).length;
+      S.fuel = Math.max(0, S.fuel - dt * (0.45 + leaks * 0.5));
+      S.tankerT = Math.max(0, S.tankerT - dt);
+      if (S.fuel < 30 && S.fuel > 0 && !S.tankerT && !S.faults.some(f => f.id === 'refuel')) spawnFault('refuel', 'L', true);
+    }
+    const empty = S.fuel <= 0 && !landing;
+    if (empty && !S.emptySaid) { S.emptySaid = true; setEngine('L', 'dead'); setEngine('R', 'dead'); say('⛽ OUT OF FUEL! Both engines have stopped. We\'re going down!', 'bad'); }
+    // steering (or the autopilot gently levelling out). You can dive all the way down… into the sea.
     if (piloted()) {
       const k = pilotKeys();
       const tx = (k.d || k.arrowright ? 1 : 0) - (k.a || k.arrowleft ? 1 : 0);
       const ty = landing ? 0 : (k.w || k.arrowup ? 1 : 0) - (k.s || k.arrowdown ? 1 : 0);   // the glide path is automatic
       PW.vx += (tx * 45 - PW.vx) * Math.min(1, dt * 1.4);
-      PW.vy += (ty * 25 - PW.vy) * Math.min(1, dt * 1.4);
+      PW.vy += ((ty > 0 ? 25 : ty < 0 ? -40 : 0) - PW.vy) * Math.min(1, dt * 1.4);
     } else { PW.vx *= Math.max(0, 1 - dt * 0.8); PW.vy *= Math.max(0, 1 - dt * 0.8); }
+    if (empty) PW.vy += (-18 - PW.vy) * Math.min(1, dt * 0.6);   // (gliding down, engines dead)
     PW.x += PW.vx * dt;
-    PW.y = clamp(PW.y + PW.vy * dt, -220, 220);
-    if (PW.y <= -220 || PW.y >= 220) PW.vy = 0;
+    PW.y = Math.min(PW.y + PW.vy * dt, 220);
+    if (PW.y >= 220) PW.vy = Math.min(0, PW.vy);
+    if (!landing && PW.y < SEA_Y + 90 && PW.vy < -3 && S.t - (S.pullUpT || -9) > 4) { S.pullUpT = S.t; say('⚠ PULL UP! PULL UP! The sea is right there!', 'bad'); beep(880, .15, 'square', .08); }
+    if (!landing && PW.y <= SEA_Y + 3 && !S.over) gameOver(false, empty ? 'Flight 404 ran out of fuel and glided into the sea. 🌊' : 'You flew Flight 404 straight into the sea! 🌊', empty ? 'fuel' : 'ground');
   }
   ocean.position.x = PW.x;
   oceanTex.offset.x += (PW.x - oldX) / 266;
@@ -109,9 +122,9 @@ function updatePassengerNeeds(dt, dead, openings) {
     S.nextStroll = rand(12, 22);
     const sitters = passengers.filter(p => p.state === 'seated' && !p.calling);
     if (!S.seatbelt && sitters.length) {
-      const p = pick(sitters), bz = (BATH.z0 + BATH.z1) / 2;
-      p.state = 'walk'; setPose(p, 'stand'); p.then = 'lav';
-      p.path = [{ x: p.seat.x, z: p.seat.z - 0.7 }, { x: 0, z: p.seat.z - 0.7 }, { x: 0, z: bz }, { x: BATH.toilet.x - 0.3, z: bz }];
+      const p = pick(sitters), d = lavDoors.R, dz = (d.z0 + d.z1) / 2;
+      p.state = 'walk'; setPose(p, 'stand'); p.then = 'lav'; d.target = 1;   // (they open the door on their way in)
+      p.path = [{ x: p.seat.x, z: p.seat.z - 0.7 }, { x: 0, z: p.seat.z - 0.7 }, { x: 0, z: dz }, { x: BATH.toilet.x - 0.2, z: dz }];
     }
   }
   for (const p of passengers) {
@@ -236,6 +249,7 @@ function update(dt) {
     termDoors.forEach((d, i) => { const tx = (i ? 1 : -1) * (near ? 2.3 : 0.8); d.position.x += (tx - d.position.x) * Math.min(1, dt * 5); });
   }
   if (flight) sky = updateFlight(dt, speed, prog);
+  if (S.over) return;
   if (H) S.turb += ((sky.inStorm ? 1 : 0) - S.turb) * Math.min(1, dt * (sky.inStorm ? 2 : 0.7));
   S.gustT -= dt;
   if (S.gustT <= 0) {
@@ -275,6 +289,7 @@ function update(dt) {
 
   // --- player & camera
   rideVehicles();
+  if (P.mini) updateMini(dt);
   updatePlayer(dt);
   S.shake = Math.max(0, S.shake - dt * 2);
   const shake = S.turb * 0.05 + S.shake * 0.08;
@@ -289,6 +304,8 @@ function update(dt) {
     // outside view from behind the plane (toggle with C while flying)
     camera.position.set(rand(-shake, shake), 9, 42);
     camera.lookAt(plane.localToWorld(tmpV.set(0, 1, -25)));
+  } else if (P.mini) {
+    miniCam(shake);   // flying the mini plane: following behind it
   } else if (S.view === 'third' && !S.flying && !(S.driving && !S.driving.push)) {
     // third person: the camera hangs back behind your character (V switches to first person)
     thirdPersonCam(shake, dt);
@@ -305,7 +322,8 @@ function update(dt) {
     camera.rotation.set(P.pitch, P.yaw, 0);
   }
   plane.updateMatrixWorld(true);
-  if (H) { updateItems(dt); cargoHost(dt); updatePassengers(dt); updateHeld(); hostCarry(); hostGrabs(dt); netShoveBags(dt); chatter(dt); }
+  updateTanker(dt);
+  if (H) { hostMinis(); updateItems(dt); cargoHost(dt); updatePassengers(dt); updateHeld(); hostCarry(); hostGrabs(dt); netShoveBags(dt); chatter(dt); }
   else netAnimate(dt);
   updateAvatars(dt);
   updateMe(dt);
@@ -395,7 +413,7 @@ function updateHud(prog, speed, tools, si) {
   setBar($('nCalm'), S.needs.calm); setBar($('nHunger'), S.needs.hunger);
   setBar($('nBored'), S.needs.bored); setBar($('nComfort'), S.needs.comfort);
   const eng = s => ({ ok: '🟢', fire: '🔥', fail: '🟡', dead: '⚫' }[engines[s].state]);
-  $('engTxt').textContent = `ENG L ${eng('L')} R ${eng('R')} · SPD ${Math.round(speed * 100)}%`;
+  $('engTxt').textContent = `ENG L ${eng('L')} R ${eng('R')} · SPD ${Math.round(speed * 100)}% · ⛽ ${Math.round(S.fuel)}%`;
   $('beltTxt').textContent = (S.turb > 0.3 ? '⚠ TURBULENCE ' : '') + (S.seatbelt ? '💺' : '');
   const st = $('stormTxt');
   if (S.phase === 'landing' && !S.touched) {
@@ -603,13 +621,13 @@ function updateMe(dt) {
     if (ME.bubble) ME.bubble.visible = false;
   }
   const seatCam = (S.driving && !S.driving.push) || S.flying;
-  ME.g.visible = S.chase || (S.view === 'third' && !seatCam);
+  ME.g.visible = S.chase || !!P.mini || (S.view === 'third' && !seatCam);
   fadeMe(ME.g.visible && S.camThird && !S.chase ? clamp((S.camDist - 0.9) / 0.9, 0, 1) : 1);
   const d = playerPose(LOCAL);
   if (P.falling) d.air = true;
   if (carriedByName()) d.cb = 1;
   // on your feet, your body is an active ragdoll (ragdoll.js); sitting, driving, flying or carried, it's animated
-  const active = !P.falling && !d.cb && !S.flying && !P.sitV && !(S.driving && !S.driving.push);
+  const active = !P.falling && !d.cb && !S.flying && !P.sitV && !P.mini && !(S.driving && !S.driving.push);
   if (!active) { ME.rag = null; poseAvatar(ME, d, dt); return; }
   let Rg = ME.rag;
   // thrown by someone, or holding R: go limp

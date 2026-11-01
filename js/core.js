@@ -61,7 +61,7 @@ function hullTab(z, k) {
   return T[T.length - 1][k];
 }
 const hullHW = z => hullTab(z, 1), ceilAt = z => hullTab(z, 2);
-const ROOT = HULL_X, WING_IN = 20 * K, WING_OUT = 25.6 * K, FUEL_X = 12 * K, BBQ_X = 16 * K;   // big wings: room for a barbecue
+const ROOT = HULL_X, WING_IN = 20 * K, WING_OUT = 25.6 * K, FUEL_X = 19.23 * K, BBQ_X = 16 * K;   // big wings: room for a barbecue
 // the engines sit on the wings, sticking out well in front of them
 const ENG_X = 8.43 * K, ENG_Y = -0.36 * K, ENG_Z0 = -9.94 * K, ENG_Z1 = -0.96 * K, ENG_R = 2.1 * K, PROP_Z = -9.06 * K;
 const ENG_Z = (ENG_Z0 + ENG_Z1) / 2;
@@ -79,7 +79,7 @@ const le = x => -6.6 * K + (x - 6 * K) * 0.19;      // wing leading edge z at |x
 const te = x => 3.6 * K - (x - 6 * K) * 0.135;     // wing trailing edge z at |x|
 // the wing's top surface: it tilts up towards the tips, and dips a little towards the leading edge
 const wingY = (x, z) => { const ax = Math.abs(x), f = clamp((te(ax) - z) / (te(ax) - le(ax)), 0, 1); return 0.0377 * ax - (0.205 + 0.05 * f * f) * K; };
-const FUEL_Z = 1.2 * K;
+const FUEL_Z = 0;                                                // (the model's own fuel pipe, on top of each wing)
 const CPT = { x: -0.97 * K, z: -7.3 * K, y: 0 };                 // the captain's seat
 // airport layout (the parked plane sits at the origin)
 // the terminal sits well back from the plane, so you need the vehicles to get between them
@@ -273,7 +273,7 @@ function station(id, name, area, mesh, extra = {}) {
 // ---------------------------------------------------------------- game state
 const S = {
   running: false, paused: false, over: false, view: 'first', phase: 'airport', t: 0, dist: 0, integrity: 100, seatbelt: false, flying: false, driving: null,
-  toT: 0, toSpeed: 0, liftoff: false, alt: 0, pitch: 0,
+  toT: 0, toSpeed: 0, liftoff: false, alt: 0, pitch: 0, fuel: 100, tankerT: 0,
   turb: 0, flash: 0, shake: 0, roll: 0, gust: 0, gustT: 0,
   needs: { calm: 90, hunger: 85, bored: 85, comfort: 85 },
   faults: [], nextFault: 28, firstFault: true, nextStorm: 45, stormOn: false,

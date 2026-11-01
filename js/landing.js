@@ -11,6 +11,7 @@ airport2.visible = false;
 
 const LAND = { Z0: -3600, TOUCH: -800, ALT: 200, DECEL: 4 };
 function startLanding() {
+  if (P.mini) endMini();
   S.phase = 'landing'; S.touched = false;
   S.landZ = LAND.Z0; S.landV = 150; S.alt = LAND.ALT; S.lpitch = -0.03;
   S.landX = PW.x + rand(40, 90) * pick([-1, 1]);           // the runway starts off to one side

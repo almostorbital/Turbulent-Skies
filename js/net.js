@@ -215,7 +215,8 @@ function hostOnData(r, m) {
     case 'exit': if (r.driving) exitVehicle(r); break;
     case 'vpush': shoveVehicle(vehicles[m.i], m.dx, m.dz); break;   // a player bumped into a vehicle
     case 'knock': knockOver(passengers[m.i], m.vx, m.vz); break;    // …or ran someone over
-    case 'fire': { const it = items[m.i]; if (it && it.type.weapon) weaponFire(r, it); break; }   // …or used a weapon
+    case 'fire': { const it = items[m.i]; if (it && it.type.weapon) weaponFire(r, it); break; }
+    case 'mini': { const it = items[m.i]; if (it && it.type === BAGS.miniplane) { if (m.on) miniTaken(it, r); else if (it.pilot === r) miniLanded(it); } break; }   // took off / landed in the mini plane   // …or used a weapon
     case 'kick': { const it = items[m.i]; if (it && it.state === 'free') { it.vx = m.vx; it.vz = m.vz; it.vy = 2.5; } break; }   // …or kicked the beach ball
     case 'vehAct': if (r.driving) vehicleAction(r.driving); break;
     case 'busDoor': if (r.driving && r.driving.kind === 'bus') toggleBusDoor(r.driving); break;
@@ -255,6 +256,7 @@ function playerPose(who) {
   const yaw = who.carriedBy ? bodyYaw(who.carriedBy) : bodyYaw(who);
   // sitting in a vehicle seat (your own y is lowered for the camera; report the floor)
   if (who.isLocal && P.sitV) return { x: P.x, y: P.sitV.floor, z: P.z, yaw, seat: true, ...extra };
+  if (who.isLocal && P.mini) return { x: P.x, y: P.y, z: P.z, yaw: P.mini.yaw, seat: true, ...extra };
   return { x: who.pose.x, y: who.pose.y, z: who.pose.z, yaw, seat: !!who.sit, ...extra };
 }
 const r2 = v => Math.round(v * 100) / 100;
@@ -274,10 +276,10 @@ function buildSnap() {
     PW: [r2(PW.x), r2(PW.y)], PR: [plane.rotation.x, plane.rotation.z, plane.position.y],
     st: [storm.position.x, storm.position.y, storm.position.z, storm.visible ? 1 : 0],
     ap: [airport.position.y, airport.position.z, airport.visible ? 1 : 0], ap2: [airport2.position.x, airport2.position.y, airport2.position.z, airport2.visible ? 1 : 0], gear: gear.visible ? 1 : 0,
-    eng: ['L', 'R'].map(s => [engines[s].state, engines[s].leak ? 1 : 0]),
+    eng: ['L', 'R'].map(s => [engines[s].state, engines[s].leak ? 1 : 0]), fu: Math.round(S.fuel),
     wing: ['L', 'R'].map(s => [wings[s].attached ? 1 : 0, wings[s].patch.visible ? 1 : 0]),
     hole: hole.seg ? [segments.indexOf(hole.seg), hole.side] : null, segs: segBits,
-    dr: [doors.L.target, doors.R.target, doors.L.open, doors.R.open, ramp.target, ramp.open, bus.door.target, bus.door.open].map(r2),
+    dr: [doors.L.target, doors.R.target, doors.L.open, doors.R.open, lavDoors.R.target, lavDoors.R.open, ramp.target, ramp.open, bus.door.target, bus.door.open].map(r2),
     V: vehicles.map(v => [r2(v.x), r2(v.z), Math.round(v.h * 1000) / 1000]),
     I: items.map(it => [r2(it.g.position.x), r2(it.g.position.y), r2(it.g.position.z), r2(it.g.rotation.y), it.state, it.g.visible ? 1 : 0, it.extra ? Object.keys(BAGS).find(k => BAGS[k] === it.type) : 0, it.caged ? 1 : 0, cargoFlags(it)]),
     X: passengers.map(p => [r2(p.g.position.x), r2(p.g.position.y), r2(p.g.position.z), r2(p.g.rotation.y), r2(p.rig.core.rotation.x), r2(p.rig.core.rotation.z),
@@ -337,7 +339,7 @@ function applySnap(m) {
   airport.position.y = m.ap[0]; airport.position.z = m.ap[1]; airport.visible = !!m.ap[2];
   airport2.position.set(m.ap2[0], m.ap2[1], m.ap2[2]); airport2.visible = !!m.ap2[3]; gear.visible = !!m.gear;
   ['L', 'R'].forEach((s, i) => {
-    engines[s].state = m.eng[i][0]; engines[s].leak = !!m.eng[i][1];
+    engines[s].state = m.eng[i][0]; engines[s].leak = !!m.eng[i][1]; if (m.fu !== undefined) S.fuel = m.fu;
     if (!m.wing[i][0] && wings[s].attached) detachPanel(s);
     wings[s].patch.visible = !!m.wing[i][1];
   });
@@ -350,7 +352,7 @@ function applySnap(m) {
   if (m.hole) { hole.seg = segments[m.hole[0]]; hole.side = m.hole[1]; STATIONS.hole.mesh.position.set((hole.side === 'L' ? -1 : 1) * (W - 0.2), 1.2, hole.seg.z); }
   else if (hole.seg && !hole.seg.sides[hole.side].open) { hole.seg = null; STATIONS.hole.mesh.position.y = -50; }
   const d = m.dr;
-  [doors.L.target, doors.R.target, doors.L.open, doors.R.open, ramp.target, ramp.open, bus.door.target, bus.door.open] = d;
+  [doors.L.target, doors.R.target, doors.L.open, doors.R.open, lavDoors.R.target, lavDoors.R.open, ramp.target, ramp.open, bus.door.target, bus.door.open] = d;
   m.V.forEach(([x, z, h], i) => {
     const v = vehicles[i];
     if (v === heldVehicle()) return;          // the trolley in your hands goes where you take it (physics.js), no waiting
@@ -403,6 +405,8 @@ function applySnap(m) {
       if (e[0] === 'explode') explode(e[1]);
       else if (e[0] === 'confetti') burstConfetti(e[1], e[2], e[3]);
       else if (e[0] === 'nuke') nukeLooks(e[1], e[2], e[3]);
+      else if (e[0] === 'busboom') busBoom();
+      else if (e[0] === 'refueled') tankerPump();
       else if (e[0] === 'dart') spawnDart(e[1], e[2], e[3], e[4], e[5], e[6], false);
       else if (e[0] === 'whack') { quack(); burstConfetti(e[1], e[2], e[3], 12); }
       else if (e[0] === 'eject' && passengers[e[1]].state !== 'gone') ejectPassenger(passengers[e[1]]);
@@ -544,7 +548,7 @@ function netUpdate(dt) {
   if (NET.mode === 'client') {
     const k = {};
     for (const key of ['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'shift']) if (keys[key]) k[key] = true;
-    netSend({ t: 'me', x: r2(P.x), y: r2(P.sitV ? P.sitV.floor : P.y), z: r2(P.z), yaw: r2(P.yaw), pitch: r2(P.pitch), face: r2(P.face), tp: S.view === 'third' ? 1 : 0, rg: ragFlat(ME && ME.rag), grab: GRAB.hands, keys: k, air: !!P.launched, seat: !!P.sitV });
+    netSend({ t: 'me', x: r2(P.x), y: r2(P.sitV ? P.sitV.floor : P.y), z: r2(P.z), yaw: r2(P.yaw), pitch: r2(P.pitch), face: r2(P.face), tp: S.view === 'third' ? 1 : 0, rg: ragFlat(ME && ME.rag), grab: GRAB.hands, keys: k, air: !!P.launched, seat: !!(P.sitV || P.mini) });
   }
 }
 // the host keeps sending snapshots even before it clicks "Start playing"

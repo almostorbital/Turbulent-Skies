@@ -9,7 +9,8 @@ const oceanTex = canvasTex(256, 256, g => {
 });
 oceanTex.wrapS = oceanTex.wrapT = THREE.RepeatWrapping; oceanTex.repeat.set(30, 30);
 const ocean = new THREE.Mesh(new THREE.PlaneGeometry(8000, 8000), new THREE.MeshLambertMaterial({ map: oceanTex }));
-ocean.rotation.x = -Math.PI / 2; ocean.position.y = -400;
+const SEA_Y = -400;                                              // (how far below the plane's cruising height)
+ocean.rotation.x = -Math.PI / 2; ocean.position.y = SEA_Y;
 scene.add(ocean);
 
 const sphere = new THREE.SphereGeometry(1, 12, 10);

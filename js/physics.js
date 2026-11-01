@@ -11,7 +11,7 @@ const ROOMS = [
   [-(W - 0.2), W - 0.2, DOOR_Z0 + 0.1, DOOR_Z1 - 0.1],   // in the exit doorways
   [-(W - 0.35), BATH.x0 - 0.25, BATH.z0 - 0.3, REAR + 0.01],   // the way past the bathroom
   [-(W - 0.35), W - 0.35, BATH.z1 + 0.2, REAR + 0.01],   // cargo bay
-  [BATH.x0 - 0.3, W - 0.35, BATH.z0 + 0.2, BATH.z1 - 0.2],     // the bathroom (no door: open to the aisle)
+  [BATH.x0 + 0.15, W - 0.35, BATH.z0 + 0.2, BATH.z1 - 0.2],    // the bathroom (in through its door)
 ];
 const LAV_ROOMS = [ROOMS[ROOMS.length - 1]];          // (the camera keeps to its own side of its walls)
 const inSeat = (x, z) => seats.some(s => Math.abs(x - s.x) < 0.34 && z > s.z - 0.32 && z < s.z + 0.38);
@@ -140,6 +140,7 @@ function respawn() {
 }
 // the Respawn button (pause menu): stuck somewhere? back aboard by the front galley, no penalty
 function respawnMe() {
+  if (P.mini) endMini();
   if (!S.running || S.over) return;
   if (carriedByName()) return say(`${carriedByName()} is carrying you: mash Space to wriggle free first!`, 'bad');
   if (isClient() && (S.driving || S.flying)) return say(`Get ${S.flying ? 'up from the controls' : 'out of the ' + S.driving.name} first (${INTERACT}).`, 'bad');
@@ -171,6 +172,7 @@ function updatePlayer(dt) {
     if (P.fallT > 2.3) { respawn(); $('fade').style.opacity = 0; }
     return;
   }
+  if (P.mini) return;   // (flying the mini plane: aircraft.js)
   if (S.flying) { P.x = CPT.x; P.z = CPT.z + 0.3; P.y = 0; return; }
   if (S.driving) { const v = S.driving, e = vehPoint(v, v.eye.x, v.eye.z); P.x = e.x; P.z = e.z; P.y = v.floor; return; }
   // sitting in a vehicle seat: you go where the seat goes
