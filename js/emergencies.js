@@ -1,12 +1,12 @@
 // Emergencies (multi-step checklists done at stations around the plane) and cabin service.
 'use strict';
 // Each step happens at a station; "$" in a station id is replaced by the side (L/R).
+// Every repair works the same way: go to the ❗ and hold Interact. Some need a tool fetched first.
 const DEFS = {
   fire: {
     group: 'eng', sided: true, drain: 0.7, deadline: 55, penalty: 12,
     title: s => `🔥 ${sideName(s)} ENGINE FIRE`,
     steps: [
-      { label: 'Cut fuel to the $ engine', at: 'pedestal' },
       { label: 'Grab the fire extinguisher', at: 'extinguisher', gives: '🧯 Fire extinguisher' },
       { label: 'Spray the $ engine', at: 'eng$', type: 'hold', dur: 3, spray: true },
     ],
@@ -17,10 +17,7 @@ const DEFS = {
   engfail: {
     group: 'eng', sided: true, drain: 0.2, deadline: 60, penalty: 8,
     title: s => `⚙ ${sideName(s)} ENGINE STALLED`,
-    steps: [
-      { label: 'Flip the $ engine ignition', at: 'pedestal' },
-      { label: 'Kick the $ engine until it starts', at: 'eng$', type: 'mash', n: 12 },
-    ],
+    steps: [{ label: 'Fix the $ engine (its panel is open)', at: 'eng$', type: 'hold', dur: 3.5 }],
     start: f => setEngine(f.side, 'fail'),
     resolve: f => { setEngine(f.side, 'ok'); say('The propeller sputters back to life!', 'good'); },
     fail: f => { setEngine(f.side, 'dead'); say(`${sideName(f.side)} engine won't restart. It's dead.`, 'bad'); },
@@ -28,10 +25,7 @@ const DEFS = {
   fuel: {
     group: 'eng', sided: true, drain: 0.35, deadline: 55, penalty: 10,
     title: s => `⛽ ${sideName(s)} FUEL LEAK`,
-    steps: [
-      { label: 'Close the crossfeed valve', at: 'pedestal' },
-      { label: 'Tighten the $ fuel line', at: 'fuel$', type: 'hold', dur: 2.5 },
-    ],
+    steps: [{ label: 'Tighten the $ fuel line', at: 'fuel$', type: 'hold', dur: 2.5 }],
     start: f => { engines[f.side].leak = true; },
     resolve: f => { engines[f.side].leak = false; },
     fail: f => { engines[f.side].leak = false; setEngine(f.side, 'dead'); say(`${sideName(f.side)} engine starved of fuel!`, 'bad'); },
@@ -41,7 +35,7 @@ const DEFS = {
     title: s => `🪽 ${sideName(s)} WING TIP TORN OFF`,
     steps: [
       { label: 'Grab the sealant gun', at: 'toolbox', gives: '🔫 Sealant gun' },
-      { label: 'Seal the torn $ wing tip', at: 'tip$', type: 'mash', n: 15 },
+      { label: 'Seal the torn $ wing tip', at: 'tip$', type: 'hold', dur: 3.5 },
     ],
     canSpawn: s => wings[s].attached,
     start: f => { detachPanel(f.side); S.needs.calm -= 15; },
@@ -53,7 +47,7 @@ const DEFS = {
     title: () => '🧱 WALL PANEL RIPPED AWAY',
     steps: [
       { label: 'Grab the sealant gun', at: 'toolbox', gives: '🔫 Sealant gun' },
-      { label: 'Patch the hole in the wall', at: 'hole', type: 'mash', n: 15 },
+      { label: 'Patch the hole in the wall', at: 'hole', type: 'hold', dur: 3.5 },
     ],
     canSpawn: () => !hole.seg && breakableWalls().length > 0,
     start: () => { breachHull(); S.needs.calm -= 25; },
@@ -63,10 +57,7 @@ const DEFS = {
   decomp: {
     drain: 0.3, deadline: 50, penalty: 10,
     title: () => '💨 CARGO RAMP BLEW OPEN',
-    steps: [
-      { label: 'Drop the oxygen masks', at: 'overhead' },
-      { label: 'Close the cargo ramp', at: 'ramp', type: 'hold', dur: 2.5 },
-    ],
+    steps: [{ label: 'Close the cargo ramp', at: 'ramp', type: 'hold', dur: 2.5 }],   // (the oxygen masks drop by themselves)
     start: () => { ramp.target = 1; S.needs.calm -= 20; },
     resolve: () => { ramp.target = 0; },
     fail: () => { ramp.target = 0; S.needs.calm -= 30; say('The ramp finally closed itself. Hopefully nothing important fell out.', 'bad'); },
@@ -74,20 +65,14 @@ const DEFS = {
   elec: {
     drain: 0.12, deadline: 60, penalty: 8, minor: true,
     title: () => '⚡ ELECTRICAL FAULT',
-    steps: [
-      { label: 'Flip breaker A', at: 'overhead' }, { label: 'Flip breaker B', at: 'overhead' }, { label: 'Flip breaker C', at: 'overhead' },
-      { label: 'Reboot the avionics', at: 'pedestal', type: 'hold', dur: 1.5 },
-    ],
+    steps: [{ label: 'Reset the breakers', at: 'overhead', type: 'hold', dur: 2.5 }],
     start: () => $('hud').classList.add('flicker'),
     resolve: () => {}, fail: () => {},
   },
   toilet: {
     group: 'lav', sided: true, drain: 0.03, deadline: 50, penalty: 2, minor: true,
     title: s => `🚽 ${s === 'L' ? 'FRONT' : 'REAR'} LAVATORY FLOODING`,
-    steps: [
-      { label: 'Shut off the lavatory water valve', at: 'valve$' },
-      { label: 'Plunge the toilet', at: 'lav$', type: 'mash', n: 10 },
-    ],
+    steps: [{ label: 'Plunge the toilet', at: 'lav$', type: 'hold', dur: 2.5 }],
     start: () => {}, resolve: () => {},
     fail: () => { S.needs.comfort -= 35; say('The whole plane smells... unforgettable.', 'bad'); },
   },

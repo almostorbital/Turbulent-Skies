@@ -24,7 +24,7 @@ const SHOTS = [
     lines: ['Air traffic control has gone home early.', 'Tower to Flight 404: good luck. You\'ll need it.', 'The tower has one rule: don\'t look at Flight 404.'] },
   { name: 'belt', from: [BELT_X, G_ + 1.5, BELT_START - 1], to: [BELT_X, G_ + 1.5, BELT_END + 4], look: [BELT_X, G_ + 0.6, BELT_END - 6],
     lines: ['Your luggage is on its way. All of it. Including the tuba.', 'Baggage handling is self-service today. You\'re the self.', 'Something in that suitcase just moved.'] },
-  { name: 'engine', from: [ENG_X + 4.5, 0.8, -15], to: [ENG_X - 3, 0.2, -13.5], look: [ENG_X, ENG_Y, PROP_Z], fov: 58,
+  { name: 'engine', from: [ENG_X + 6, 1.6, -21], to: [ENG_X - 4, 0.8, -18], look: [ENG_X, ENG_Y, PROP_Z], fov: 58,
     lines: ['Engine check: it spins. Mostly.', 'Two propellers. One of them is held on with tape.', 'The mechanic says it\'s fine. The mechanic is a dog.'] },
   { name: 'duck', orbit: { c: [5, G_ + 1.6, TERM.z0 + 10.5], r: 4, y: G_ + 2.2, a0: 0.5, a1: 2.2 },
     lines: ['Gary the duck has seen things. Terrible things.', 'The airport mascot, Gary, wishes you a pleasant flight.', 'All flights must be approved by Gary.'] },

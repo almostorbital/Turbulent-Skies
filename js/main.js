@@ -253,6 +253,10 @@ function update(dt) {
     const ld = lavDoors[s];
     ld.open += clamp(ld.target - ld.open, -dt * 3, dt * 3);
     ld.hinge.rotation.y = ld.swing * ld.open;
+    // a broken engine's service hatch swings open, so you can get at it
+    const h = engines[s].hatch, broke = engines[s].state === 'fail' || engines[s].state === 'fire';
+    h.open += clamp((broke ? 1 : 0) - h.open, -dt * 1.2, dt * 1.2);
+    h.hinge.rotation.z = h.way * 1.9 * h.open;
   }
   ramp.open += clamp(ramp.target - ramp.open, -dt * 0.45, dt * 0.45);
   ramp.pivot.rotation.x = RAMP_SHUT + ramp.open * (RAMP_OPEN - RAMP_SHUT);
@@ -299,7 +303,7 @@ function update(dt) {
     camera.rotation.set(P.pitch, P.yaw, 0);
   } else {
     const bob = S.flying ? 0 : Math.sin(P.walkT * 2.6) * 0.035;
-    camera.position.set(P.x + rand(-shake, shake), P.y + (S.flying ? 1.55 : EYE) + bob + rand(-shake, shake), P.z);
+    camera.position.set(P.x + rand(-shake, shake), P.y + (S.flying ? CPT.y + 1.75 : EYE) + bob + rand(-shake, shake), P.z);
     camera.rotation.set(P.pitch, P.yaw, 0);
   }
   plane.updateMatrixWorld(true);
@@ -314,6 +318,12 @@ function update(dt) {
   updateFPArms(dt);
   handItems['🧯'].visible = S.view === 'first' && !S.held && !S.driving && tools.some(i => i.startsWith('🧯'));
   handItems['🔫'].visible = S.view === 'first' && !S.held && !S.driving && tools.some(i => i.startsWith('🔫'));
+  // in third person it's in your character's right hand
+  const handPt = S.view === 'third' && !S.held && !S.driving && ME && ME.rag && ME.g.visible ? ME.rag.pos[6] : null;
+  for (const k in bodyTools) {
+    const t = bodyTools[k]; t.visible = !!handPt && tools.some(i => i.startsWith(k));
+    if (t.visible) { t.position.copy(handPt); t.position.x -= Math.sin(P.face) * 0.12; t.position.z -= Math.cos(P.face) * 0.12; t.rotation.set(0, P.face, 0); }   // (held a little out in front)
+  }
   updateEffects(dt, flight);
 
   // --- passengers' needs, win / lose
@@ -371,7 +381,7 @@ function boardingCard() {
     ${row(b.seated >= b.pax, `Passengers seated: ${b.seated}/${b.pax} needed`, `${inTerm} in the terminal · ${onBus} on the bus. Park the bus at the terminal doors and press F, then press F again at the cargo ramp.`)}
     ${row(b.loaded === b.bags, `Bags in the cargo bay: ${b.loaded}/${b.bags}`, `${onBelt} still in the pile · ${onTrolley} on the trolleys. Grab bags from the big pile by the conveyor (hold the left mouse button), drop them on a luggage trolley, push it to the cargo ramp with your hands and drag each bag into the cargo bay.`)}
     ${row(b.rampUp, 'Raise the cargo ramp', 'Cargo bay · yellow panel')}
-    ${row(b.doorsShut, 'Exit doors closed', 'Exit row')}
+    ${row(b.doorsShut, 'Exit doors closed', 'Front galley')}
     ${row(false, 'Take off from the captain\'s seat', 'Cockpit · yoke')}</div>`;
 }
 function updateHud(prog, speed, tools, si) {
@@ -431,7 +441,7 @@ function updateHud(prog, speed, tools, si) {
   $('svc').innerHTML = sv;
 
   // passengers' faces
-  const masks = S.faults.some(f => f.id === 'decomp' && f.step >= 1);
+  const masks = S.faults.some(f => f.id === 'decomp');
   for (const p of passengers) {
     if (p.calling || p.state === 'gone') continue;
     const m = hap + p.off;

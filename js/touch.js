@@ -98,7 +98,7 @@ setInterval(() => {
   touchUI.style.display = on ? 'block' : 'none';
   if (!on) return;
   const walking = !S.driving && !S.flying;
-  tbtn('c').style.display = 'none';   // (always third person: no camera switching)
+  tbtn('c').style.display = '';   // (first / third person on foot, inside / outside driving and flying)
   tbtn('f').style.display = S.driving && S.driving.kind === 'bus' ? '' : 'none';
   const carrying = carryingName();
   tbtn('q').style.display = S.held || carrying || (S.driving && S.driving.kind === 'bus') ? '' : 'none';

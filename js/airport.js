@@ -53,7 +53,7 @@ function buildAirport(group, gateName) {
   // ---- control tower, lamp posts, fuel truck, cones
   cyl(1.8, 2.4, 26, wallM, -42, GROUND + 13, 75, group);
   cyl(4, 3, 4, std(0x2c4a63, { roughness: .2, metalness: .7 }), -42, GROUND + 28, 75, group);
-  for (const [x, z] of [[-25, 60], [25, 60], [-25, 30], [25, 30], [-25, 0], [25, 0]]) { cyl(0.12, 0.15, 9, M.dark, x, GROUND + 4.5, z, group); box(1.2, 0.2, 0.5, M.lamp, x, GROUND + 9, z, group); }
+  for (const [x, z] of [[-25, 60], [25, 60], [-25, 30], [25, 30], [-30, 0], [30, 0]]) { cyl(0.12, 0.15, 9, M.dark, x, GROUND + 4.5, z, group); box(1.2, 0.2, 0.5, M.lamp, x, GROUND + 9, z, group); }
   box(2.4, 2.2, 6, std(0xe8e8e0), 30, GROUND + 1.4, 50, group);
   box(2.4, 1.6, 2, M.red, 30, GROUND + 1.1, 46, group);
   for (const [x, z] of [[-6, 22], [6, 22], [-24, -4], [24, -4]]) cyl(0.02, 0.25, 0.7, std(0xff7a1a), x, GROUND + 0.35, z, group, 12);

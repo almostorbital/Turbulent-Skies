@@ -299,7 +299,7 @@ function updateMarkers() {
 }
 
 // ---------------------------------------------------------------- hand-held tools, attached to the camera
-const handItems = {};
+const handItems = {}, bodyTools = {};
 (function () {
   const ext = new THREE.Group();
   ext.add(new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.3, 12), M.red));
@@ -310,6 +310,8 @@ const handItems = {};
   for (const [k, g] of [['🧯', ext], ['🔫', gun]]) {
     g.position.set(0.34, -0.3, -0.7); g.scale.setScalar(0.6);
     g.visible = false; camera.add(g); handItems[k] = g;
+    // and a copy for your character's hand, seen in third person
+    const c = g.clone(); c.position.set(0, 0, 0); c.scale.setScalar(1.3); plane.add(c); bodyTools[k] = c;
   }
 })();
 
@@ -375,6 +377,8 @@ function keyDown(k, repeat) {
   keys[k] = true;
   if (repeat) return;
   if (k === 'enter' && S.running && !S.over && S.paused) resume();
+  if ((k === 'v' || (k === 'c' && !S.driving && !S.flying)) && S.running && !S.over) { S.view = S.view === 'third' ? 'first' : 'third'; sayLocal(S.view === 'third' ? '🎥 Third person (V for first person)' : '👀 First person (V for third person)'); }
+  if (k === 'c' && (S.driving || S.flying)) S.chase = !S.chase;
   if (k === 'p' && S.running && !S.over) { if (S.paused) resume(); else showPause(); }
   if ((k === 'h' || k === '?') && S.running && !S.over) { if (S.helpOpen) resume(); else showPause(true); }
   if (k === 'escape' && S.helpOpen) resume();
@@ -425,7 +429,7 @@ function helpHTML() {
       <tr><td>${k_('E')}</td><td>Uses things: switch on the 📻 boombox, share 🍕 pizza, open the 🎁 mystery box, pet the 🐱 cat, press the ☢ nuke's button (don't)</td></tr>
       <tr><td>Right-click (or ${k_('E')})</td><td>Use the weapon you're holding: 🐔 rubber chicken (whack!), 🎯 foam dart blaster, 🍌 banana launcher</td></tr>
       <tr><td>Fun cargo</td><td>Kick the 🏖 beach ball; hold the 🎈 balloons to float; throw the 🎉 party crate for confetti</td></tr>
-      <tr><td>Hold / mash ${k_('E')}</td><td>Repairs that say "Hold E" or "Mash E"</td></tr>
+      <tr><td>Hold ${k_('E')} at a ❗</td><td>Fix it. Every repair works this way (a few need a tool fetched first: the ❗ shows where)</td></tr>
       <tr><td>${k_('Q')}</td><td>Put down what you're carrying (next to the luggage trolley, it goes on the trolley)</td></tr>
       <tr><td>${k_('E')} on a player</td><td>Pick up another player (multiplayer), then ${k_('E')} throws them</td></tr>
       <tr><td>Mash ${k_('Space')}</td><td>Wriggle free when someone's carrying you</td></tr>
@@ -434,17 +438,20 @@ function helpHTML() {
       <tr><td>${k_('A', 'D')} or ${k_('←', '→')}</td><td>Steer</td></tr>
       <tr><td>${k_('F')}</td><td>Board or unload passengers (bus)</td></tr>
       <tr><td>${k_('Q')}</td><td>Open or close the bus door</td></tr>
+      <tr><td>${k_('C')}</td><td>Switch camera</td></tr>
       <tr><td>${k_('E')}</td><td>Get up (let go of the trolley)</td></tr>
       <tr><td>${k_('E')} on a seat</td><td>Ride along while someone else drives (or jump onto the trolley)</td></tr>
       <tr><th colspan="2">Flying (captain's seat)</th></tr>
       <tr><td>${k_('A', 'D')} or ${k_('←', '→')}</td><td>Steer (and line up with the runway)</td></tr>
       <tr><td>${k_('W', 'S')} or ${k_('↑', '↓')}</td><td>Climb and dive (hold W to take off)</td></tr>
+      <tr><td>${k_('C')}</td><td>Switch camera</td></tr>
       <tr><td>${k_('E')}</td><td>Get up (the autopilot takes over)</td></tr>
       <tr><th colspan="2">Game</th></tr>
       <tr><td>${k_('P')}</td><td>Pause</td></tr>
       <tr><td>${k_('Enter')} or ${k_('P')}</td><td>Resume</td></tr>
       <tr><td>Left mouse: <b>Interact</b></td><td>Use what you're pointing at (doors, seats, controls, repairs). Hold it on a bag, a passenger, a trolley or a wall and your hands grab it; let go to drop or throw</td></tr>
       <tr><td>Hold ${k_('R')}</td><td>Go floppy (you're a ragdoll!) — let go to get back up</td></tr>
+      <tr><td>${k_('V')}</td><td>Switch between first person and third person</td></tr>
       <tr><td>${k_('H')}</td><td>This help screen</td></tr>
     </table></div>`;
   const touch = `<div>
@@ -452,8 +459,8 @@ function helpHTML() {
     <table class="keys">
       <tr><td>Left stick</td><td>Walk, drive and fly (push all the way to run)</td></tr>
       <tr><td>Drag on the right side</td><td>Look around</td></tr>
-      <tr><td>${k_('E')} button</td><td>Use, pick up, throw (hold or tap fast for repairs)</td></tr>
-      <tr><td>${k_('Q')} ${k_('F')} ${k_('⤒')}</td><td>Put down / bus door, vehicle job, jump (they appear when you can use them)</td></tr>
+      <tr><td>${k_('E')} button</td><td>Use, pick up, throw (hold it at a ❗ to fix things)</td></tr>
+      <tr><td>${k_('Q')} ${k_('F')} ${k_('C')} ${k_('⤒')}</td><td>Put down / bus door, vehicle job, camera, jump (they appear when you can use them)</td></tr>
       <tr><td>${k_('II')} ${k_('?')}</td><td>Pause, this help screen</td></tr>
     </table></div>`;
   return `<h1>🎮 Controls</h1><div class="helpCols">${TOUCH ? touch + keyboard : keyboard + touch}</div>`;
