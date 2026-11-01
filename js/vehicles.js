@@ -110,14 +110,7 @@ function makeVehicle(kind, x, z, opts = {}) {
   syncVehicle(v);
   return v;
 }
-function syncVehicle(v) {
-  v.g.position.set(v.x, 0, v.z); v.g.rotation.y = v.h;
-  // blown up: up in the air, tumbling, and back down with a bounce (then smoking for a while)
-  if (v.boomT !== undefined && v.boomT < 2.2) {
-    const t = v.boomT, h = t < 1.6 ? 9 * t - 5.6 * t * t : Math.abs(Math.sin((t - 1.6) * 5)) * 0.4 * (2.2 - t);
-    v.g.position.y = Math.max(0, h); v.g.rotation.z = Math.sin(t * 3.3) * 0.5 * Math.max(0, 1.6 - t);
-  }
-}
+function syncVehicle(v) { v.g.position.set(v.x, 0, v.z); v.g.rotation.y = v.h; }
 // a few trolleys, so everybody in a multiplayer game can push one
 // (and one more, painted danger-red, that the nuke rides on: see BAGS.nuke)
 const nukeTrolley = makeVehicle('trolley', 3.1, 76, { paint: std(0xd8342c, { roughness: .45, metalness: .3 }), detonator: true });
@@ -127,8 +120,13 @@ const bus = makeVehicle('bus', -7, 76);
 function toggleBusDoor(v) { v.door.target = v.door.target ? 0 : 1; beep(v.door.target ? 520 : 380, .25, 'triangle', .06); }
 const busDoorOpen = () => bus.door.open > 0.9;
 function updateVehicles(dt) {
-  if (bus.boomT !== undefined) { bus.boomT += dt; syncVehicle(bus); }
-  if (bus.burnT > 0) { bus.burnT -= dt; if (Math.random() < dt * 8) emitLocal(smokeFx, bus.x + rand(-1, 1), GROUND + 2.6, bus.z + rand(-3, 3), rand(-.4, .4), rand(1.5, 3), rand(-.4, .4), 0x333333, 1, 2.5, 3, 0.7); }
+  if (bus.wrecked && bus.walkAt && S.t > bus.walkAt && !isClient()) { bus.walkAt = S.t + 2; busWalkers(); }
+  // where the bus blew up, it burns for a while
+  if (bus.burn && bus.burn.t > 0 && S.phase === 'airport') {
+    bus.burn.t -= dt;
+    if (Math.random() < dt * 10) emitLocal(smokeFx, bus.burn.x + rand(-1.5, 1.5), GROUND + 0.5, bus.burn.z + rand(-3, 3), rand(-.4, .4), rand(1.5, 3), rand(-.4, .4), 0x333333, 1.2, 3, 3, 0.7);
+    if (Math.random() < dt * 6) emitLocal(fireFx, bus.burn.x + rand(-1.5, 1.5), GROUND + 0.2, bus.burn.z + rand(-3, 3), 0, rand(1, 2), 0, pick([0xff8a20, 0xff4a10]), rand(.4, .8), rand(.3, .6), 1.5);
+  }
   const d = bus.door;
   d.open += clamp(d.target - d.open, -dt * 1.8, dt * 1.8);
   d.mesh.position.set(1.36 + Math.min(1, d.open * 4) * 0.1, 0, -3.12 + d.open * 0.92);

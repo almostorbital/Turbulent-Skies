@@ -160,14 +160,22 @@ function updateEffects(dt, flight) {
       if (e.leak && Math.random() < .5) emitLocal(smokeFx, s === 'L' ? -FUEL_X : FUEL_X, wingY(FUEL_X, FUEL_Z) + 0.15, FUEL_Z, rand(-.3, .3), rand(.5, 1.5), 9, 0xeef4ff, .3, 1, 3, .6);
     }
   }
-  // the barbecue smokes away, a lot more when someone's grilling
-  const grilling = S.holdKey === 'svcbbq';
-  bbq.coals.material.color.setHSL(0.05, 1, 0.45 + Math.sin(S.t * 6) * 0.08 + (grilling ? 0.12 : 0));
-  bbq.food.forEach((f, i) => { f.position.y = 0.985 + (grilling ? Math.max(0, Math.sin(S.t * 9 + i * 1.7)) * 0.12 : 0); });
-  if (Math.random() < dt * (grilling ? 40 : 6))
-    emitLocal(smokeFx, bbq.x + rand(-.2, .2), bbq.y + 1.1, bbq.z + rand(-.2, .2), rand(-.3, .3), rand(.8, 1.6), flight ? 12 : 0.4, grilling ? 0x999999 : 0xbbbbbb, .35, 1.6, 3, .45);
+  // the barbecue glows and smokes, a lot more while burgers are on (and the patties hop about)
+  for (const it of items) {
+    if (it.type !== BAGS.grill || it.state === 'gone' || !it.g.visible) continue;
+    const ud = it.g.userData, cooking = it.cookT > 0 || it.cooking;
+    ud.coals.material.color.setHSL(0.05, 1, 0.45 + Math.sin(S.t * 6) * 0.08 + (cooking ? 0.12 : 0));
+    ud.patties.forEach((f, i) => { f.visible = cooking; f.position.y = 0.82 + Math.max(0, Math.sin(S.t * 9 + i * 1.7)) * 0.1; });
+    if (Math.random() < dt * (cooking ? 40 : 4))
+      emitLocal(smokeFx, it.x + rand(-.2, .2), it.y + 1.0, it.z + rand(-.2, .2), rand(-.3, .3), rand(.8, 1.6), flight && !insideHull(it.x, it.z) ? 12 : 0.4, cooking ? 0x999999 : 0xbbbbbb, .35, 1.6, 3, .45);
+  }
   if (flight && ramp.open > 0.3 && Math.random() < dt * 25)
     emitLocal(smokeFx, rand(-.6, .6), rand(.6, 2.2), rand(-6, 10), 0, 0, 6, 0xffffff, .3, 1.5, 3, .3);
+  // sparks off the torn wires
+  if (hole.seg && Math.random() < dt * 3) {
+    const s = hole.side === 'L' ? -1 : 1, sz = rand(hole.seg.z0 + 0.2, hole.seg.z1 - 0.2);
+    for (let i = 0; i < 5; i++) emitLocal(fireFx, s * (HULL_X - 0.05), SEG_Y1 - rand(0.3, 0.8), sz, rand(-1, 1), rand(-1, 1.5), rand(-1, 1), pick([0xffee66, 0xffffff, 0xffaa22]), 0.05, 0.35, 0);
+  }
   if (hole.seg && Math.random() < dt * 30) {
     const s = hole.side === 'L' ? -1 : 1;
     emitLocal(smokeFx, s * rand(0.5, W), rand(0.3, 2.2), hole.seg.z + rand(-2, 2), s * 6, 0, 2, 0xffffff, .25, 1, 3, .35);
@@ -395,7 +403,7 @@ function boardingCard() {
   const onBelt = items.filter(i => i.state === 'pile').length, onTrolley = trolleys.reduce((n, v) => n + trolleyLoad(v), 0);
   const row = (ok, text, loc) => `<div class="st ${ok ? 'done' : 'cur'}">${ok ? '✓' : '▶'} ${text}${!ok && loc ? `<span class="loc">📍 ${loc}</span>` : ''}</div>`;
   return `<div class="card board"><div class="ct">🛫 BOARDING · FLIGHT 404</div>
-    ${row(b.seated >= b.pax, `Passengers seated: ${b.seated}/${b.pax} needed`, `${inTerm} in the terminal · ${onBus} on the bus. Park the bus at the terminal doors and press F, then press F again at the cargo ramp.`)}
+    ${row(b.seated >= b.pax, `Passengers seated: ${b.seated}/${b.pax} needed`, bus.wrecked ? `${inTerm} in the terminal. The bus blew up, so they're walking to the plane!` : `${inTerm} in the terminal · ${onBus} on the bus. Park the bus at the terminal doors and press F, then press F again at the cargo ramp.`)}
     ${row(b.loaded === b.bags, `Bags in the cargo bay: ${b.loaded}/${b.bags}`, `${onBelt} still in the pile · ${onTrolley} on the trolleys. Grab bags from the big pile by the conveyor (hold the left mouse button), drop them on a luggage trolley, push it to the cargo ramp with your hands and drag each bag into the cargo bay.`)}
     ${row(b.rampUp, 'Raise the cargo ramp', 'Cargo bay · yellow panel')}
     ${row(b.doorsShut, 'Exit doors closed', 'Front galley')}

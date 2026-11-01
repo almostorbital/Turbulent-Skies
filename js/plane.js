@@ -35,7 +35,7 @@ const PLANE_MAT = {
 // One ring of the cabin wall, round one of the model's windows. Each side panel (its piece of the outer
 // skin, once the plane model has loaded, and the glass in its window) is kept together in `meshes` so the
 // whole thing rips away at once.
-const SEG_Y0 = 0, SEG_Y1 = 3.1;
+const SEG_Y0 = 0, SEG_Y1 = 3.1 * K;
 function hullSegment(z0, z1, [w0, w1]) {
   const seg = { z0, z1, z: (z0 + z1) / 2, sides: {} };
   const wz = (w0 + w1) / 2, ww = w1 - w0, wy = (WIN_Y0 + WIN_Y1) / 2, wh = WIN_Y1 - WIN_Y0;
@@ -298,34 +298,6 @@ function hullSegment(z0, z1, [w0, w1]) {
     station('eng' + side, Side + ' engine', Side + ' wing', nac);
   }
 
-  // ---- a barbecue on the left wing (the airline calls it "premium outdoor dining")
-  const bz = (le(BBQ_X) + te(BBQ_X)) / 2 - 0.6;
-  const g = new THREE.Group(); g.position.set(-BBQ_X, wingY(BBQ_X, bz), bz); plane.add(g);
-  const red = std(0xc0262e, { roughness: .35, metalness: .3, side: THREE.DoubleSide }), steel = std(0x9aa3ad, { metalness: .7, roughness: .3 });
-  // kettle grill: a bowl, an open lid, three legs and a grate
-  const bowl = new THREE.Mesh(new THREE.SphereGeometry(0.45, 20, 10, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), red); bowl.position.y = 0.95; g.add(bowl);
-  const lidHinge = new THREE.Group(); lidHinge.position.set(0, 0.95, 0.45); lidHinge.rotation.x = -1.2; g.add(lidHinge);
-  const lid = new THREE.Mesh(new THREE.SphereGeometry(0.45, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), red); lid.position.z = -0.45; lidHinge.add(lid);
-  cyl(0.04, 0.04, 0.1, M.dark, 0, 0.47, -0.45, lidHinge);
-  for (let i = 0; i < 3; i++) { const a = i * Math.PI * 2 / 3; const l = cyl(0.025, 0.025, 0.95, steel, Math.sin(a) * 0.3, 0.45, Math.cos(a) * 0.3, g); l.rotation.set(Math.cos(a) * 0.25, 0, -Math.sin(a) * 0.25); }
-  const coals = cyl(0.36, 0.36, 0.04, new THREE.MeshBasicMaterial({ color: 0xff5a1a }), 0, 0.82, 0, g);
-  cyl(0.42, 0.42, 0.015, M.dark, 0, 0.95, 0, g);
-  const food = [];
-  const brown = std(0x5a3418), sausage = std(0xb0502a);
-  for (const [fx, fz] of [[-0.18, -0.12], [0.16, -0.15], [0.02, 0.17]]) food.push(cyl(0.11, 0.11, 0.05, brown, fx, 0.985, fz, g));
-  for (const fz of [-0.02, 0.06]) { const sg = cyl(0.035, 0.035, 0.3, sausage, 0.05, 0.985, fz, g); sg.rotation.z = Math.PI / 2; food.push(sg); }
-  // a little table with sauces and plates, a cooler, and a patio umbrella
-  box(0.9, 0.05, 0.55, std(0xd9a066), 1.05, 0.78, 0, g);
-  for (const [lx, lz] of [[0.65, -0.22], [1.45, -0.22], [0.65, 0.22], [1.45, 0.22]]) box(0.04, 0.78, 0.04, M.dark, lx, 0.39, lz, g);
-  cyl(0.04, 0.045, 0.2, M.red, 0.85, 0.9, -0.1, g); cyl(0.04, 0.045, 0.2, M.yellow, 0.95, 0.9, -0.1, g);
-  for (let i = 0; i < 4; i++) cyl(0.13, 0.11, 0.012, M.white, 1.25, 0.81 + i * 0.013, 0.05, g);
-  box(0.6, 0.4, 0.4, std(0x2a7fd4), -1.0, 0.2, 0.3, g); box(0.62, 0.06, 0.42, M.white, -1.0, 0.43, 0.3, g);
-  cyl(0.03, 0.03, 2.4, M.dark, 1.05, 1.2, 0.55, g);
-  const shade = new THREE.Mesh(new THREE.ConeGeometry(1.3, 0.45, 12, 1, true), std(0xffd34a, { side: THREE.DoubleSide })); shade.position.set(1.05, 2.3, 0.55); g.add(shade);
-  textPlane(0.9, 0.22, 'WING BBQ', '#c0262e', '#fff', g, -1.0, 0.22, 0.09, Math.PI, 'bold 80px sans-serif');
-  const hit = box(1.2, 1.4, 1.2, M.hit, 0, 0.7, 0, g);
-  station('bbq', 'Barbecue', 'Left wing', hit, { service: 'bbq' });
-  window.bbq = { g, food, coals, lid: lidHinge, x: -BBQ_X, y: g.position.y, z: g.position.z };
 })();
 
 // ---------------------------------------------------------------- damage
@@ -365,15 +337,48 @@ function breachHull(seg, side) {
   sd.open = true;
   // the skin, lining, stripes, window, frame and shade all go together
   for (const m of sd.meshes) toDebris(m, new THREE.Vector3(s * rand(5, 12), rand(2, 8), rand(25, 45)));
+  tornEdges(seg, side);
   hole.seg = seg; hole.side = side;
   STATIONS.hole.mesh.position.set(s * (W - 0.2), 1.2, seg.z);
   for (let i = 0; i < 30; i++) emitLocal(smokeFx, s * W, rand(0.3, 2.3), seg.z + rand(-0.8, 0.8), s * rand(4, 10), rand(-2, 2), rand(5, 20), 0xcccccc, 0.8, 1.2, 3, 0.8);
   S.flash = 0.5; S.shake = 1.4; jerk(1.3);
   beep(110, 0.8, 'sawtooth', 0.14);
 }
+// what a ripped-out wall panel leaves behind: jagged shards of skin round the hole, bent outwards (the air
+// tore it out), the yellow insulation showing, and wires hanging down
+const tornMetal = std(0xb8c0c8, { metalness: .6, roughness: .45, side: THREE.DoubleSide });
+const insulation = std(0xf2c84b, { roughness: 1, side: THREE.DoubleSide });
+function tornEdges(seg, side) {
+  const s = side === 'L' ? -1 : 1, x = s * HULL_X, z0 = seg.z0, z1 = seg.z1, y0 = SEG_Y0 + 0.05, y1 = SEG_Y1;
+  const cz = (z0 + z1) / 2, cy = (y0 + y1) / 2, ring = [], st = 0.12;
+  for (let z = z0; z < z1; z += st) ring.push([z, y0]);
+  for (let y = y0; y < y1; y += st) ring.push([z1, y]);
+  for (let z = z1; z > z0; z -= st) ring.push([z, y1]);
+  for (let y = y1; y > y0; y -= st) ring.push([z0, y]);
+  const metal = [], fluff = [];
+  ring.forEach((a, i) => {
+    const b = ring[(i + 1) % ring.length], mz = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2, dz = cz - mz, dy = cy - my, d = Math.hypot(dz, dy) || 1;
+    const k = rand(0.06, 0.32), out = s * rand(0.02, 0.28);
+    metal.push(x, a[1], a[0], x, b[1], b[0], x + out, my + dy / d * k, mz + dz / d * k);
+    const kf = rand(0.03, 0.12), xi = x - s * 0.05;
+    fluff.push(xi, a[1], a[0], xi, b[1], b[0], xi, my + dy / d * kf, mz + dz / d * kf);
+  });
+  const g = new THREE.Group(); plane.add(g);
+  for (const [pos, mat] of [[metal, tornMetal], [fluff, insulation]]) {
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.computeVertexNormals();
+    g.add(new THREE.Mesh(geo, mat));
+  }
+  // loose wires dangling from the top of the hole
+  for (let i = 0; i < 4; i++) {
+    const len = rand(0.35, 0.9), w = cyl(0.012, 0.012, len, pick([M.red, M.yellow, M.dark, M.steel]), x - s * 0.04, y1 - len / 2, rand(z0 + 0.15, z1 - 0.15), g);
+    w.rotation.set(rand(-0.3, 0.3), 0, s * rand(0, 0.4));
+  }
+  seg.sides[side].torn = g;
+}
 function patchHole() {
   if (!hole.seg) return;
   const seg = hole.seg, sd = seg.sides[hole.side];
+  if (sd.torn) { plane.remove(sd.torn); sd.torn = null; }
   box(0.05, SEG_Y1 - SEG_Y0, seg.z1 - seg.z0, M.grey, (hole.side === 'L' ? -1 : 1) * (HULL_X - 0.03), (SEG_Y0 + SEG_Y1) / 2, seg.z);
   sd.open = false; sd.patched = true;
   hole.seg = null; hole.side = null;
@@ -569,7 +574,7 @@ function dressPlane(scene) {
   // the cockpit's furniture from the model: the instrument panel, the yokes and the pedestal (and the
   // partition walls behind the seats)
   // (every corner well inside the hull: the skin's own corners are out on the hull)
-  const cockpitPart = t => t.every(v => v.z > -10.6 * K && v.z < -5.9 * K && Math.abs(v.x) < hullHW(v.z) - 0.06 && v.y > 0.07 && v.y < Math.min((v.z < -8.5 * K ? 2.0 : 3.0) * K, ceilAt(v.z) - 0.06));
+  const cockpitPart = t => t.every(v => v.z > -10.6 * K && v.z < -5.9 * K && Math.abs(v.x) < hullHW(v.z) - 0.06 && v.y > 0.07 && v.y < Math.min((v.z < -8.5 * K ? 2.0 : 3.0) * K, ceilAt(v.z) - (v.z < -8.5 * K ? 0.2 : 0.06)));
   const parts = { main: [], segs: segments.map(() => ({ L: [], R: [] })), wingL: [], wingR: [], cockpit: [] };
   for (const t of tris) {
     const c = t.c, n = t.n, ax = Math.abs(c.x), wall = ax > HULL_X - 0.15 && Math.abs(n.x) > 0.7;

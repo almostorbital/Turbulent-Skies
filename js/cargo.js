@@ -30,6 +30,12 @@ function cargoUse(it) {
   if (k === BAGS.cat && !it.caged) return { label: 'pet the cat', done: () => petCat(it) };
   if (k === BAGS.nuke && !it.armed) return { label: 'press the big red button', done: () => armNuke(it) };
   if (k === BAGS.miniplane) return { label: 'fly the mini plane', local: true, done: () => startMini(it) };
+  if (k === BAGS.grill) {
+    if (it.cookT > 0) return { label: 'the burgers are sizzling…', done: () => {} };
+    if (!onWing(it.x, it.z)) return { label: 'grill burgers (carry it out onto a wing first!)', done: () => say('🍔 The barbecue goes on the wing! Carry it out through an exit door.') };
+    return { label: 'grill some burgers', done: () => startGrilling(it) };
+  }
+  if (k.food) return { label: `eat the ${it.name}`, done: () => eatFood(it) };
   return null;
 }
 function sharePizza(it) {
@@ -77,23 +83,50 @@ function nukeLooks(x, y, z) {
   for (let i = 0; i < 70; i++) { const a = rand(0, 6.3); emitLocal(smokeFx, x, y + 10, z, Math.cos(a) * rand(2, 6), rand(4, 7), Math.sin(a) * rand(2, 6), pick([0x888888, 0x666666, 0xaa8866]), rand(3, 5), rand(3, 5), 2.5, 0.85); }
   beep(38, 2.8, 'sawtooth', 0.25); setTimeout(() => sweep(120, 30, 2.0, 'square', 0.12), 120);
 }
-// the bus explodes: a fireball, bits flying off, and it's thrown into the air and comes down burnt black
-// (still drivable, just about). Plays on everyone's screen.
+// the bus explodes: a fireball, and it comes apart, every piece flying off burnt black. That's the end of
+// the bus (plays on everyone's screen); the passengers will have to walk to the plane.
 const charred = std(0x2a2522, { roughness: 1 });
 function busBoom() {
+  if (bus.wrecked) return;
   const bx = bus.x, bz = bus.z, by = GROUND + 1.6;
-  for (let i = 0; i < 120; i++) emitLocal(fireFx, bx + rand(-2, 2), by, bz + rand(-4, 4), rand(-10, 10), rand(2, 16), rand(-10, 10), pick([0xffee88, 0xffaa22, 0xff5511]), rand(1, 2.5), rand(0.5, 1.2), 2);
-  for (let i = 0; i < 60; i++) emitLocal(smokeFx, bx + rand(-2, 2), by + 1, bz + rand(-4, 4), rand(-3, 3), rand(3, 8), rand(-3, 3), 0x333333, rand(2, 3.5), rand(2, 4), 2, 0.85);
-  // a few pieces fly off
-  const parts = []; bus.g.traverse(o => { if (o.isMesh && !bus.wheels.includes(o)) parts.push(o); });
-  for (let i = 0; i < 6 && parts.length; i++) {
-    const m = parts.splice(Math.floor(Math.random() * parts.length), 1)[0].clone();
-    m.material = charred; m.position.y += 0; bus.g.add(m); m.updateMatrixWorld(true);
-    toDebris(m, new THREE.Vector3(rand(-14, 14), rand(10, 22), rand(-14, 14)), 5);
+  for (let i = 0; i < 140; i++) emitLocal(fireFx, bx + rand(-2, 2), by, bz + rand(-4, 4), rand(-12, 12), rand(2, 18), rand(-12, 12), pick([0xffee88, 0xffaa22, 0xff5511]), rand(1, 2.5), rand(0.5, 1.2), 2);
+  for (let i = 0; i < 70; i++) emitLocal(smokeFx, bx + rand(-2, 2), by + 1, bz + rand(-4, 4), rand(-3, 3), rand(3, 8), rand(-3, 3), 0x333333, rand(2, 3.5), rand(2, 4), 2, 0.85);
+  // nobody stays in it
+  if (P.sitV === bus) standFromSeat();
+  if (S.driving === bus && !isClient()) exitVehicle(LOCAL);
+  bus.g.updateMatrixWorld(true);
+  const parts = []; bus.g.traverse(o => { if (o.isMesh && o.material !== M.hit) parts.push(o); });
+  for (const m of parts) {
+    if (!(m.material && m.material.transparent)) m.material = charred;
+    toDebris(m, new THREE.Vector3(rand(-16, 16), rand(8, 24), rand(-16, 16)), rand(5, 8));
   }
-  bus.g.traverse(o => { if (o.isMesh && o.material !== M.hit && !(o.material && o.material.transparent)) o.material = charred; });
-  bus.boomT = 0; bus.burnT = 30;
+  bus.g.visible = false; bus.wrecked = true; bus.v = 0;
+  bus.burn = { x: bx, z: bz, t: 25 };
+  bus.x = bus.z = 5000; syncVehicle(bus);   // (gone: nothing bumps into it, nothing can drive it)
+  S.flash = Math.max(S.flash, 0.6); S.shake = Math.max(S.shake, 1.5);
   beep(60, 1.2, 'sawtooth', 0.2);
+}
+// (host) no bus: anyone who was in it goes flying, and enough passengers set off on foot for the plane
+function busGone() {
+  for (const w of NET.remotes) if (w.driving === bus) exitVehicle(w);
+  for (const p of passengers) if (['bus', 'inBus', 'outBus'].includes(p.state)) {
+    if (p.busSeat) { p.busSeat.p = null; p.busSeat = null; }
+    p.x = bus.burn.x + rand(-1, 1); p.z = bus.burn.z + rand(-3, 3); p.y = GROUND;
+    ragdoll(p, rand(-8, 8), rand(6, 10), rand(-8, 8));
+  }
+  bus.walkAt = S.t + 3.5;
+}
+// (host, every couple of seconds once the bus has blown up) enough passengers for the flight walk out to the plane
+function busWalkers() {
+  {
+    const going = passengers.filter(p => ['walk', 'wait', 'seated'].includes(p.state)).length;
+    const walkers = passengers.filter(p => p.state === 'terminal' || p.state === 'toBus').slice(0, Math.max(0, PAX_NEEDED - going));
+    for (const p of walkers) {
+      p.state = 'walk'; p.then = 'board'; p.y = GROUND;
+      p.path = [{ x: TERM_DOOR.x, z: TERM_DOOR.z + 1.5 }, { x: TERM_DOOR.x, z: TERM_DOOR.z - 3 }, { x: RAMP_FOOT.x, z: RAMP_FOOT.z }];
+    }
+    if (walkers.length && !bus.walkSaid) bus.walkSaid = true, say(`🚶 No more bus! ${walkers.length} passenger${walkers.length > 1 ? 's are' : ' is'} walking to the plane.`, 'bad');
+  }
 }
 function nukeBoom(it) {
   const holder = it.holder || null;
@@ -120,7 +153,7 @@ function nukeBoom(it) {
     const a = away(o.x, o.z, 14); o.state = 'free'; o.vx = a.vx; o.vz = a.vz; o.vy = a.up + 2;
   }
   // the bus goes up too, if it's anywhere near
-  if (S.phase === 'airport' && Math.hypot(bus.x - x, bus.z - z) < 45) { netEvent('busboom'); busBoom(); }
+  if (S.phase === 'airport' && !bus.wrecked && Math.hypot(bus.x - x, bus.z - z) < 45) { netEvent('busboom'); busBoom(); busGone(); }
   // vehicles skid away; players get launched
   if (S.phase === 'airport') for (const v of vehicles) { const a = away(v.x, v.z, 2.5); if (a.k > 0) for (let n = 0; n < 6; n++) shoveVehicle(v, a.vx / 6, a.vz / 6); }
   for (const w of [LOCAL, ...NET.remotes]) {
@@ -167,9 +200,32 @@ function dispenseMeal() {
   beep(700, .08, 'sine', .05); setTimeout(() => beep(900, .1, 'sine', .05), 90);
   say('🍽 A meal tray! Pick it up and carry it to a passenger.', 'good');
 }
+// the barbecue: on a wing, E puts burgers on; a few seconds later two pop off the grill
+function startGrilling(it) {
+  it.cookT = 4; beep(180, .4, 'sawtooth', .03);
+  say('🍔 Sizzle sizzle… burgers on the grill!', 'good');
+}
+function cookGrill(it, dt) {
+  it.cookT -= dt;
+  if (it.cookT > 0) return;
+  it.cookT = 0;
+  for (const s of [-1, 1]) {
+    const b = spawnBag(BAGS.burger);
+    Object.assign(b, { state: 'free', x: it.x + s * 0.55, y: it.y + 1.0, z: it.z + 0.2, vx: s * 0.8, vy: 2, vz: 0.3 }); b.g.visible = true;
+  }
+  if (inAir()) S.needs.calm = Math.min(100, S.needs.calm + 5);
+  beep(660, .1, 'triangle', .05); setTimeout(() => beep(880, .12, 'triangle', .05), 120);
+  say('🍔 Burgers are ready! Eat one (E) or carry them to the passengers.', 'good');
+}
+// E on food: you eat it
+function eatFood(it) {
+  it.state = 'gone'; it.g.visible = false;
+  sweep(300, 180, 0.25, 'square', 0.04); setTimeout(() => sweep(320, 200, 0.2, 'square', 0.04), 220);
+  say(pick(['😋 Mmm! Delicious.', '😋 Best burger at 3,000 metres.', '😋 Nom nom nom.', '😋 That hit the spot.']), 'good');
+}
 function deliverMeals() {
   for (const it of items) {
-    if (it.type !== BAGS.meal || it.state === 'gone') continue;
+    if (!it.type.food || it.state === 'gone') continue;
     const p = passengers.find(p => p.state === 'seated' && S.t - (p.fedT ?? -99) > 45 && Math.hypot(p.x - it.x, p.z - it.z) < 0.85 && it.y < 1.7);
     if (!p) continue;
     it.state = 'gone'; it.g.visible = false; p.fedT = S.t;
@@ -181,6 +237,7 @@ function deliverMeals() {
 }
 function cargoHost(dt) {
   deliverMeals();
+  for (const it of items) if (it.type === BAGS.grill && it.cookT > 0) cookGrill(it, dt);
   for (const it of items) {
     if (it.state === 'gone') continue;
     const k = it.type;
@@ -213,13 +270,14 @@ function cargoLetGo(it) {
   if (it.type === BAGS.nuke && speed > 4 && !it.armed) { armNuke(it); say('☢ You THREW the nuke?! It\'s armed now!', 'bad'); }
 }
 // for the other players: the bits of state they need to see (and hear) it right
-const cargoFlags = it => (it.on ? 1 : 0) | (it.opened ? 2 : 0) | ((it.slices ?? 3) << 2) | ((it.outcome || 0) << 4) | (it.armed ? 64 : 0);
+const cargoFlags = it => (it.on ? 1 : 0) | (it.opened ? 2 : 0) | ((it.slices ?? 3) << 2) | ((it.outcome || 0) << 4) | (it.armed ? 64 : 0) | (it.cookT > 0 ? 128 : 0);
 function applyCargoFlags(it, f) {
   if (f === undefined) return;
   it.on = !!(f & 1);
   if (it.type === BAGS.mystery && (f & 2) && !it.opened) { it.opened = true; it.outcome = (f >> 4) & 3; it.g.userData.lid.visible = false; if (it.outcome === 1) it.g.userData.snake.visible = true; }
   if (it.type === BAGS.pizza) { it.slices = (f >> 2) & 3; it.g.userData.slices.forEach((b, k) => { b.visible = k < it.slices; }); }
   if (it.type === BAGS.nuke) { if (f & 64) it.armed = it.armed || S.t; else it.armed = 0; }
+  if (it.type === BAGS.grill) it.cooking = !!(f & 128);
 }
 
 // ---------------------------------------------------------------- the AUTO LOAD button (in the terminal)

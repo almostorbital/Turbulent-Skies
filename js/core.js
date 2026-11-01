@@ -91,7 +91,8 @@ const sideWord = s => s === 'L' ? 'left' : 'right';
 // touch screens (iPads, phones) get on-screen controls instead of the mouse
 let TOUCH = matchMedia('(pointer: coarse)').matches || (navigator.maxTouchPoints > 1 && /Macintosh|iPad|iPhone/.test(navigator.userAgent));
 if (TOUCH) document.documentElement.classList.add('touch');
-const unlock = () => { try { if (document.pointerLockElement) document.exitPointerLock(); } catch (e) {} };
+let selfUnlock = false;   // (the game letting go of the mouse itself, as opposed to you pressing Esc)
+const unlock = () => { try { if (document.pointerLockElement) { selfUnlock = true; document.exitPointerLock(); } } catch (e) {} };
 
 // ---------------------------------------------------------------- renderer / scene
 const renderer = new THREE.WebGLRenderer({ antialias: true });

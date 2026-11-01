@@ -14,8 +14,6 @@ const SHOTS = [
     lines: ['Gate 404. Where flights go to be found… eventually.', 'Behold: the pride of the fleet. The fleet is one plane.', 'This plane is older than the pilot. And the pilot\'s parents.'] },
   { name: 'terminal', from: [9, G_ + 3.2, TERM.z1 - 1.5], to: [-8, G_ + 2.4, TERM.z1 - 1.8], look: [0, G_ + 1, TERM.z0 + 5],
     lines: ['The passengers have no idea what they signed up for.', 'Somebody packed a crocodile. Nobody will admit it.', 'Eight brave souls. Ten suspicious bags.'] },
-  { name: 'bbq', from: [-BBQ_X - 5, 3.8, 9], to: [-BBQ_X + 3, 2.8, 6], look: [-BBQ_X, 1.6, 0.2],
-    lines: ['New this season: a barbecue. On the wing. At 3,000 metres.', 'The airline calls this "premium outdoor dining".', 'Health and safety said no. We did it anyway.'] },
   { name: 'runway', from: [3, G_ + 0.4, -40], to: [-2, G_ + 2.2, -19], look: [0, 1.2, -6], fov: 55,
     lines: ['The runway is long. The checklist is short.', 'Pre-flight inspection: complete. (We looked at it.)', 'Nothing could possibly go wrong. Nothing at all.'] },
   { name: 'ramp', from: [5, 2.2, 36], to: [-1, 0.6, 25], look: [0, -0.4, 12],

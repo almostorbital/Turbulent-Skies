@@ -190,7 +190,25 @@ const BAGS = {
     box(0.3, 0.3, 1.4, y, 0, 0.3, 0, s); box(1.9, 0.06, 0.4, y, 0, 0.25, -0.1, s); box(0.7, 0.05, 0.2, y, 0, 0.45, 0.6, s); box(0.05, 0.3, 0.2, y, 0, 0.6, 0.6, s);
     if (BAGS.miniplane && BAGS.miniplane.scene) queueMicrotask(() => { const it = items.find(i => i.g === g); if (it) miniModel(it, BAGS.miniplane.scene); });
   } },
-  meal: { name: 'meal tray', r: 0.2, extra: true, meal: true, build: g => {
+  // the barbecue: carry it out onto a wing, then E to grill burgers (cargo.js)
+  grill: { name: 'barbecue grill', r: 0.45, loose: true, heavy: true, build: g => {
+    const red = std(0xc0262e, { roughness: .35, metalness: .3, side: THREE.DoubleSide }), steel = std(0x9aa3ad, { metalness: .7, roughness: .3 });
+    const bowl = new THREE.Mesh(new THREE.SphereGeometry(0.38, 18, 9, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), red); bowl.position.y = 0.8; g.add(bowl);
+    const lidHinge = new THREE.Group(); lidHinge.position.set(0, 0.8, 0.38); lidHinge.rotation.x = -1.2; g.add(lidHinge);
+    const lid = new THREE.Mesh(new THREE.SphereGeometry(0.38, 18, 9, 0, Math.PI * 2, 0, Math.PI / 2), red); lid.position.z = -0.38; lidHinge.add(lid);
+    cyl(0.035, 0.035, 0.08, M.dark, 0, 0.4, -0.38, lidHinge);
+    for (let i = 0; i < 3; i++) { const a = i * Math.PI * 2 / 3, l = cyl(0.022, 0.022, 0.8, steel, Math.sin(a) * 0.25, 0.38, Math.cos(a) * 0.25, g); l.rotation.set(Math.cos(a) * 0.25, 0, -Math.sin(a) * 0.25); }
+    g.userData.coals = cyl(0.3, 0.3, 0.035, new THREE.MeshBasicMaterial({ color: 0xff5a1a }), 0, 0.69, 0, g);
+    cyl(0.35, 0.35, 0.012, M.dark, 0, 0.8, 0, g);
+    g.userData.patties = [[-0.14, -0.1], [0.14, -0.1], [0, 0.14]].map(([x, z]) => cyl(0.09, 0.09, 0.04, std(0x5a3418), x, 0.82, z, g));
+  } },
+  // a burger off the grill: eat it (E), or carry it to a hungry passenger
+  burger: { name: 'burger', r: 0.12, extra: true, food: true, build: g => {
+    cyl(0.1, 0.11, 0.05, std(0xd99a4e), 0, 0.03, 0, g); cyl(0.105, 0.105, 0.035, std(0x5a3418), 0, 0.07, 0, g);
+    cyl(0.11, 0.11, 0.01, std(0x4caf50), 0, 0.095, 0, g); cyl(0.1, 0.105, 0.01, std(0xffd23f), 0, 0.105, 0, g);
+    sph(0.1, std(0xd99a4e), 0, 0.11, 0, g, [1, 0.55, 1]);
+  } },
+  meal: { name: 'meal tray', r: 0.2, extra: true, meal: true, food: true, build: g => {
     box(0.42, 0.03, 0.3, mat(0x7a8a99), 0, 0.03, 0, g);
     cyl(0.1, 0.1, 0.02, M.white, -0.08, 0.055, 0, g); sph(0.06, mat(0xd9a066), -0.08, 0.08, 0, g, [1.2, 0.5, 1]);   // chicken (or pasta?)
     cyl(0.035, 0.03, 0.08, mat(0xff8a1a), 0.12, 0.08, -0.06, g);                                                    // orange juice
@@ -524,7 +542,7 @@ const PAX_COUNT = 20, PAX_NEEDED = 6;                // (a seat for each)
   // always one in reach. Any BAGS_NEEDED of them in the cargo bay will do.
   const spare = ['suitcase', 'backpack', 'briefcase', 'suitcase', 'backpack', 'briefcase', 'suitcase', 'backpack', 'briefcase', 'suitcase',
     'backpack', 'briefcase', 'suitcase', 'backpack', 'suitcase', 'briefcase', 'backpack', 'suitcase'];
-  for (const k of [...MANIFEST, ...spare, 'beachball', 'boombox', 'balloons', 'pizza', 'cat', 'mystery', 'popper', 'nuke', 'rubberchicken', 'blaster', 'bananagun', 'miniplane']) spawnBag(BAGS[k]);
+  for (const k of [...MANIFEST, ...spare, 'beachball', 'boombox', 'balloons', 'pizza', 'cat', 'mystery', 'popper', 'nuke', 'rubberchicken', 'blaster', 'bananagun', 'miniplane', 'grill']) spawnBag(BAGS[k]);
   buildPile();
   // the nuke starts out sitting on its own (red) trolley, by the others
   const nk = items.find(i => i.type === BAGS.nuke), w = nukeTrolley.whole;
@@ -692,9 +710,9 @@ function updateItems(dt) {
         if (S.t - (S.fullMsgT || -9) > 3) { S.fullMsgT = S.t; say(trolleyFullMsg(tv, it), 'bad'); }
       }
     }
-    cabinForces(it, force);
-    it.vx += force.x * dt; it.vz += force.z * dt;
     const grounded = it.y <= (groundAt(it.x, it.z) ?? -99) + 0.03;
+    cabinForces(it, force);
+    if (!(it.type.heavy && grounded)) { it.vx += force.x * dt; it.vz += force.z * dt; }   // (the barbecue's too heavy to slide about)
     if (grounded) { const fr = Math.max(0, 1 - (it.type.bouncy ? 0.5 : 3.5) * dt); it.vx *= fr; it.vz *= fr; }   // (a ball rolls on and on)
     if (it.alive && !it.caged) liveCargo(it, dt, grounded);
     const [hx, hz] = moveBody(it, it.vx * dt, it.vz * dt);

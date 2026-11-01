@@ -11,6 +11,9 @@ canvas { display: block; }
 #stormTxt.hit { color: #ff6b6b; }
 .need { display: grid; grid-template-columns: 22px 1fr; gap: 6px; align-items: center; font-size: 14px; }
 .need .bar { height: 7px; margin: 3px 0; }
+#menuBtn { position: fixed; top: 10px; left: calc(50% + 150px); pointer-events: auto; font: 700 13px system-ui, sans-serif; color: #fff; background: rgba(12,20,32,.7); border: 1px solid rgba(255,255,255,.35); border-radius: 12px; padding: 5px 12px; cursor: pointer; }
+#menuBtn:hover { background: rgba(40,60,90,.85); }
+html.touch #menuBtn { display: none; }
 #where { position: fixed; top: 14px; left: 50%; transform: translateX(-50%); font-size: 13px; font-weight: 700; letter-spacing: .08em; background: rgba(12,20,32,.6); padding: 4px 12px; border-radius: 12px; }
 #toast { position: fixed; top: 48px; left: 50%; transform: translateX(-50%); width: min(560px, 50vw); display: flex; flex-direction: column; gap: 6px; align-items: center; pointer-events: none; }
 .msg { background: rgba(10, 15, 25, .85); padding: 7px 14px; border-radius: 8px; font-size: 14px; text-align: center; animation: fade 5s forwards; }

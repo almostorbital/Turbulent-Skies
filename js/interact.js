@@ -64,6 +64,7 @@ function actionFor(ud, who = LOCAL) {
     if (s.p || s.player) return { type: 'info', label: 'Someone is already sitting there.' };
     return { key: 'vseat', type: 'press', ready: true, local: true, label: `Sit down in the ${v.name}`, done: () => sitInVehicle(v, s) };
   }
+  if (ud.drive && ud.drive.wrecked) return null;
   if (ud.drive && ud.drive.push) return S.phase === 'airport' ? { key: 'grab', type: 'grab', ready: true, label: `grab the ${ud.drive.name} (then walk to push or pull it)` } : null;
   if (ud.drive) return S.phase === 'airport' ? { key: 'drive', type: 'press', ready: true, label: ud.drive.push ? `Grab the ${ud.drive.name} and push it` : `Sit down and drive the ${ud.drive.name}`, done: () => enterVehicle(ud.drive, who) } : null;
   if (ud.item) {
@@ -386,7 +387,7 @@ function keyDown(k, repeat) {
   if (k === 'c' && (S.driving || S.flying)) S.chase = !S.chase;
   if (k === 'p' && S.running && !S.over) { if (S.paused) resume(); else showPause(); }
   if ((k === 'h' || k === '?') && S.running && !S.over) { if (S.helpOpen) resume(); else showPause(true); }
-  if (k === 'escape' && S.helpOpen) resume();
+  if (k === 'escape') { if (S.helpOpen) resume(); else if (S.running && !S.over && !S.paused) showPause(); }
   if (k === 'e' || k === 'fire') { if (heldWeapon()) useHeldWeapon(); else if (k === 'e') S.press = true; }   // (E fires a held weapon)
   if (k === 'q') S.drop = true;
   if (k === 'f') S.act = true;
@@ -486,8 +487,12 @@ function showPause(help) {
   $('overlay').style.display = 'flex';
 }
 function resume() { S.paused = false; S.helpOpen = false; $('ovBox').classList.remove('wide'); $('overlay').style.display = 'none'; lock(); }
+// Esc (which lets go of the mouse) opens the pause menu, with Resume, the controls and Respawn
 document.addEventListener('pointerlockchange', () => {
   if (locked()) { S.paused = false; S.helpOpen = false; $('overlay').style.display = 'none'; }
-  else if (S.running && !S.over && !document.hasFocus()) showPause();
+  else if (S.running && !S.over && !selfUnlock && !CUT.on && !END.on) showPause();
+  selfUnlock = false;
 });
+// …and so does the ⏸ Menu button at the top of the screen
+$('menuBtn').onclick = e => { e.stopPropagation(); if (S.running && !S.over) showPause(); };
 setInterval(() => { lockHint.style.display = !TOUCH && S.running && !S.over && !S.paused && !locked() ? 'block' : 'none'; }, 200);
