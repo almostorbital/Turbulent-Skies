@@ -4,17 +4,16 @@
 // an open exit door, an open cargo ramp, or a hole ripped in the side.
 // (the nose and tail narrow, so on top of these you also have to keep clear of the walls: see walkable)
 const ROOMS = [
-  [-1.9, 1.9, NOSE + 0.6, BULK - 0.2],           // cockpit
-  [-0.9, 0.9, BULK - 0.4, BULK + 0.4],           // cockpit door
-  [-(W - 0.35), W - 0.35, BULK + 0.2, DOOR_Z1 + 0.1],   // front galley, between the exit doors
-  [-0.8, W - 0.35, BULK + 0.2, GALLEY + 0.4],    // front galley, beside the front lav
-  [-(W - 0.35), -1.1, LAV_Z0 + 0.15, GALLEY - 0.22],   // front lavatory
+  [-1.3, 1.3, NOSE + 0.6, BULK - 0.2],           // cockpit
+  [-0.55, 0.55, BULK - 0.4, BULK + 0.4],         // cockpit door
+  [-(W - 0.35), W - 0.35, BULK + 0.2, GALLEY + 0.4],     // front galley, between the exit doors
   [-(W - 0.35), W - 0.35, GALLEY + 0.3, CARGO + 0.2],    // cabin
   [-(W - 0.2), W - 0.2, DOOR_Z0 + 0.1, DOOR_Z1 - 0.1],   // in the exit doorways
-  [-(W - 0.35), 0.85, CARGO, REAR + 0.01],       // cargo bay (left of the rear lav)
-  [0.85, W - 0.35, CARGO + 2.1, REAR + 0.01],    // cargo bay (behind the rear lav)
-  [1.1, W - 0.6, CARGO + 0.37, CARGO + 1.88],    // rear lavatory
+  [-(W - 0.35), LAV_X - 0.1, CARGO, REAR + 0.01],        // cargo bay (left of the lav)
+  [LAV_X - 0.1, W - 0.35, CARGO + 2.1, REAR + 0.01],     // cargo bay (behind the lav)
+  [LAV_X + 0.15, W - 0.6, CARGO + 0.37, CARGO + 1.88],   // the lavatory
 ];
+const LAV_ROOMS = [ROOMS[ROOMS.length - 1]];          // (the camera keeps to its own side of their walls)
 const inSeat = (x, z) => seats.some(s => Math.abs(x - s.x) < 0.34 && z > s.z - 0.32 && z < s.z + 0.38);
 function sideOpen(x, z) {
   const side = x < 0 ? 'L' : 'R';
@@ -124,10 +123,9 @@ function areaName(x, z) {
   if (S.phase === 'airport' && !insideHull(x, z) && !onWing(x, z) && !onRamp(x, z)) return inTerminal(x, z) ? 'Terminal · Gate 404' : 'Airport apron';
   if (Math.abs(x) > HULL_X) return x < 0 ? 'Left wing' : 'Right wing';
   if (z < BULK) return S.flying ? 'Cockpit · flying' : 'Cockpit';
-  if (x < -0.95 && z < GALLEY - 0.1) return 'Front lavatory';
   if (z < GALLEY + 0.3) return z > DOOR_Z0 && z < DOOR_Z1 ? 'Front galley · exit doors' : 'Front galley';
   if (z > REAR) return 'Cargo ramp';
-  if (x > 0.95 && z > CARGO + 0.25 && z < CARGO + 2) return 'Rear lavatory';
+  if (x > LAV_X && z > CARGO + 0.25 && z < CARGO + 2) return 'Lavatory';
   if (z > CARGO) return 'Cargo bay';
   const s = seats.reduce((a, b) => Math.abs(b.z - z) < Math.abs(a.z - z) ? b : a);
   return 'Cabin · row ' + s.row;

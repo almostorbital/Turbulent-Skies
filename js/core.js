@@ -28,24 +28,29 @@ const pick = arr => arr[Math.floor(Math.random() * arr.length)];
 const D2R = Math.PI / 180;
 
 // Plane geometry, in the plane's local frame (meters). Cabin floor is y=0, nose points -z.
-// The outside is the plane modelled in Blender (models/plane.glb), scaled up 20x: a boxy fuselage with
-// straight walls, a door on each side just behind the cockpit, three big windows down each side, a low wing
-// with an engine on each side, and a tail that sweeps up over the cargo ramp (a hole in its underside).
-//   cockpit z -9..-6 | galley (exit doors, front lav) -6..-1.4 | cabin -1.4..4.1 | cargo bay + rear lav 4.1..8.95 | ramp
+// The outside is the plane modelled in Blender (models/plane.glb), scaled up PLANE_SCALE times: a boxy fuselage
+// with straight walls, a door on each side just behind the cockpit, three big windows down each side (a row of
+// seats beside each, one either side of the aisle), a low wing with an engine on each side, and a tail that
+// sweeps up over the cargo ramp (a hole in its underside).
+//   cockpit | galley (the exit doors) | cabin (3 rows) | cargo bay + lav | ramp
+// The sizes below were measured off the model at 20x; K turns them into the size the plane is now.
 // CHAR shrinks every person a little, so the plane, seats, doors and vehicles are roomy enough for them
 const CHAR = 0.85, EYE = 1.42, TOTAL = 300;
-const HULL_X = 2.67, W = 2.6;                                    // the outside skin, and the inside of the wall
+const PLANE_SCALE = 13, K = PLANE_SCALE / 20;
+const HULL_X = 2.67 * K, W = 2.6 * K;                            // the outside skin, and the inside of the wall
 const wallX = () => W;                                           // (the walls go straight up)
-const NOSE = -9, BULK = -6, GALLEY = -1.4, CARGO = 4.1, REAR = 8.95;
+const NOSE = -9 * K, BULK = -6 * K, REAR = 8.95 * K;
 // the model's holes: an exit door each side, and three windows each side (z from, z to; and how high)
-const DOOR_Z0 = -5.76, DOOR_Z1 = -3.44, DOOR_TOP = 2.84;
-const WINDOWS = [[-2.88, -1.44], [-0.96, 0.48], [0.88, 2.48]], WIN_Y0 = 1.48, WIN_Y1 = 2.6;
-const LAV_Z0 = DOOR_Z1 + 0.15;                                   // the front lav is just behind the left door
+const DOOR_Z0 = -5.76 * K, DOOR_Z1 = -3.44 * K, DOOR_SILL = 0.2 * K, DOOR_TOP = 2.84 * K;
+const WINDOWS = [[-2.88, -1.44], [-0.96, 0.48], [0.88, 2.48]].map(w => w.map(z => z * K)), WIN_Y0 = 1.48 * K, WIN_Y1 = 2.6 * K;
+const GALLEY = DOOR_Z1 + 0.15, CARGO = WINDOWS[2][1] + 0.3;     // the cabin runs past the windows; then the cargo bay
+const LAV_X = W - 1.3;                                           // the lavatory's inner wall (it's on the right, at the front of the cargo bay)
 // how wide (half) and how tall the inside is along the plane: the nose and tail taper in
 const HULL_TAB = [[-13.4, 0, 0], [-12.6, 1.39, 1.07], [-11.8, 1.71, 1.41], [-11, 1.93, 1.63], [-10.2, 2.12, 1.82], [-9.4, 2.27, 2.13],
-  [-9, 2.33, 2.2], [-8.6, 2.37, 2.5], [-8.2, 2.42, 2.8], [-7.8, 2.49, 3.05], [-7.4, 2.54, 3.25], [-7, 2.57, 3.37], [-6.6, W, 3.47],
-  [-6.2, W, 3.53], [-5.8, W, 3.55], [5, W, 3.55], [5.8, 2.54, 3.55], [7, 2.42, 3.55], [8.6, 2.24, 3.54], [10.2, 2.03, 3.53],
-  [11.8, 1.82, 3.51], [13.4, 1.6, 3.47], [15, 1.36, 3.42], [16.6, 1.14, 3.36], [18.2, 0.85, 3.31], [19.8, 0.58, 3.28], [21, 0.37, 3.25], [21.4, 0, 3.25]];
+  [-9, 2.33, 2.2], [-8.6, 2.37, 2.5], [-8.2, 2.42, 2.8], [-7.8, 2.49, 3.05], [-7.4, 2.54, 3.25], [-7, 2.57, 3.37], [-6.6, 2.6, 3.47],
+  [-6.2, 2.6, 3.53], [-5.8, 2.6, 3.55], [5, 2.6, 3.55], [5.8, 2.54, 3.55], [7, 2.42, 3.55], [8.6, 2.24, 3.54], [10.2, 2.03, 3.53],
+  [11.8, 1.82, 3.51], [13.4, 1.6, 3.47], [15, 1.36, 3.42], [16.6, 1.14, 3.36], [18.2, 0.85, 3.31], [19.8, 0.58, 3.28], [21, 0.37, 3.25], [21.4, 0, 3.25]]
+  .map(r => r.map(v => v * K));
 function hullTab(z, k) {
   const T = HULL_TAB;
   if (z <= T[0][0]) return T[0][k];
@@ -53,25 +58,26 @@ function hullTab(z, k) {
   return T[T.length - 1][k];
 }
 const hullHW = z => hullTab(z, 1), ceilAt = z => hullTab(z, 2);
-const ROOT = HULL_X, WING_IN = 20, WING_OUT = 25.6, FUEL_X = 12, BBQ_X = 16;   // big wings: room for a barbecue
+const ROOT = HULL_X, WING_IN = 20 * K, WING_OUT = 25.6 * K, FUEL_X = 12 * K, BBQ_X = 16 * K;   // big wings: room for a barbecue
 // the engines sit on the wings, sticking out well in front of them
-const ENG_X = 8.43, ENG_Y = -0.36, ENG_Z0 = -9.94, ENG_Z1 = -0.96, ENG_R = 2.1, PROP_Z = -9.06;
+const ENG_X = 8.43 * K, ENG_Y = -0.36 * K, ENG_Z0 = -9.94 * K, ENG_Z1 = -0.96 * K, ENG_R = 2.1 * K, PROP_Z = -9.06 * K;
 const ENG_Z = (ENG_Z0 + ENG_Z1) / 2;
 // the cargo ramp fills the hole under the tail: closed, it slopes up along it; open, it reaches the tarmac
-const GROUND = -4.2;                                             // tarmac height under the parked plane
-const RAMP_LEN = 6.92, RAMP_SHUT = Math.PI / 2 - Math.atan2(1.0, 6.85), RAMP_OPEN = Math.PI / 2 + Math.asin(-GROUND / RAMP_LEN);
-const RAMP_W0 = 1.5, RAMP_W1 = 0.9;                              // half-width at the hinge and at the far end
+const GROUND = -4.2 * K;                                         // tarmac height under the parked plane (the propellers just clear it)
+const RAMP_LEN = 6.92 * K, RAMP_SHUT = Math.PI / 2 - Math.atan2(1.0, 6.85), RAMP_OPEN = Math.PI / 2 + Math.asin(-GROUND / RAMP_LEN);
+const RAMP_W0 = 1.5 * K, RAMP_W1 = 0.9 * K;                      // half-width at the hinge and at the far end
 const RAMP_ANG = RAMP_OPEN - Math.PI / 2, RAMP_SLOPE = Math.tan(RAMP_ANG), RAMP_RUN = RAMP_LEN * Math.cos(RAMP_ANG);
 // how far out from the middle you can stand on the open ramp (it narrows like the tail it closes)
 const rampHW = z => RAMP_W0 - 0.15 + (RAMP_W1 - RAMP_W0) * clamp((z - REAR) / RAMP_RUN, 0, 1);
 const RAMP_FOOT = { x: 0, z: REAR + RAMP_RUN + 1.2 };
-const ROWS = [-0.75, 0.6, 1.95, 3.3], SEAT_X = [-1.95, -1.3, 1.3, 1.95];
-const le = x => -6.6 + (x - 6) * 0.19;      // wing leading edge z at |x|
-const te = x => 3.6 - (x - 6) * 0.135;      // wing trailing edge z at |x|
+// a row of seats by each window, one seat either side of the aisle
+const ROWS = WINDOWS.map(w => (w[0] + w[1]) / 2 - 0.05), SEAT_X = [-(W - 0.42), W - 0.42];
+const le = x => -6.6 * K + (x - 6 * K) * 0.19;      // wing leading edge z at |x|
+const te = x => 3.6 * K - (x - 6 * K) * 0.135;     // wing trailing edge z at |x|
 // the wing's top surface: it tilts up towards the tips, and dips a little towards the leading edge
-const wingY = (x, z) => { const ax = Math.abs(x), f = clamp((te(ax) - z) / (te(ax) - le(ax)), 0, 1); return 0.0377 * ax - 0.205 - 0.05 * f * f; };
-const FUEL_Z = 1.2;
-const CPT = { x: -0.97, z: -7.3, y: 0.55 };                      // the captain's seat (up on a step, to see over the nose)
+const wingY = (x, z) => { const ax = Math.abs(x), f = clamp((te(ax) - z) / (te(ax) - le(ax)), 0, 1); return 0.0377 * ax - (0.205 + 0.05 * f * f) * K; };
+const FUEL_Z = 1.2 * K;
+const CPT = { x: -0.97 * K, z: -7.3 * K, y: 0 };                 // the captain's seat
 // airport layout (the parked plane sits at the origin)
 // the terminal sits well back from the plane, so you need the vehicles to get between them
 const TERM = { x0: -20, x1: 20, z0: 85, z1: 101 }, TERM_DOOR = { x: 0, z: 83.5 };

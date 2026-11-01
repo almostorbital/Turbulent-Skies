@@ -498,7 +498,7 @@ function ragdoll(p, vx, vy, vz) {
   slideWhistle(true);
 }
 // far more people than the flight needs: pick who you want to take (at least PAX_NEEDED); the rest stay behind
-const PAX_COUNT = 20, PAX_NEEDED = 8;
+const PAX_COUNT = 20, PAX_NEEDED = 6;                // (a seat for each)
 (function populate() {
   const names = [...FIRST].sort(() => Math.random() - 0.5);
   for (let i = 0; i < PAX_COUNT; i++) {
@@ -518,7 +518,7 @@ const PAX_COUNT = 20, PAX_NEEDED = 8;
   w.z = -0.62;   // (well forward, so it doesn't cover the DETONATOR on the handle)
   w.item = nk; nk.slot = w; nk.state = 'ride'; nk.y = nukeTrolley.bedTop; nk.g.visible = true;
 })();
-const BAGS_NEEDED = 12;
+const BAGS_NEEDED = 8;
 // stack the bags into a heap: a wide bottom layer, smaller layers on top. Each bag remembers the ones it's
 // resting on; take one of those away and it tumbles down.
 function buildPile() {

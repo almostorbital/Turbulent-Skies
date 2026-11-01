@@ -109,9 +109,9 @@ function updatePassengerNeeds(dt, dead, openings) {
     S.nextStroll = rand(12, 22);
     const sitters = passengers.filter(p => p.state === 'seated' && !p.calling);
     if (!S.seatbelt && sitters.length) {
-      const p = pick(sitters), front = p.seat.z < 0;
+      const p = pick(sitters), d = lavDoors.R;
       p.state = 'walk'; setPose(p, 'stand'); p.then = 'lav';
-      p.path = [{ x: p.seat.x, z: p.seat.z - 0.7 }, { x: 0, z: p.seat.z - 0.7 }, front ? { x: 0, z: lavDoors.L.z0 + 0.4 } : { x: 0, z: lavDoors.R.z0 + 0.4 }, front ? { x: -0.6, z: lavDoors.L.z0 + 0.4 } : { x: 0.6, z: lavDoors.R.z0 + 0.4 }];
+      p.path = [{ x: p.seat.x, z: p.seat.z - 0.7 }, { x: 0, z: p.seat.z - 0.7 }, { x: 0, z: d.z0 + 0.4 }, { x: d.x - 0.35, z: d.z0 + 0.4 }];
     }
   }
   for (const p of passengers) {
@@ -160,8 +160,7 @@ function updateEffects(dt, flight) {
     emitLocal(smokeFx, s * rand(0.5, W), rand(0.3, 2.2), hole.seg.z + rand(-2, 2), s * 6, 0, 2, 0xffffff, .25, 1, 3, .35);
   }
   for (const f of S.faults) if (f.id === 'toilet' && Math.random() < dt * 18) {
-    const front = f.side === 'L';
-    emitLocal(smokeFx, front ? rand(-2.1, -0.4) : rand(0.6, 2.0), 0.03, front ? rand(BULK + 0.2, GALLEY) : rand(CARGO + 0.3, CARGO + 2), rand(-.3, .3), 0, rand(-.3, .3), 0x3399ff, .4, 2, 2, .7);
+    emitLocal(smokeFx, rand(LAV_X - 0.5, W - 0.2), 0.03, rand(CARGO + 0.3, CARGO + 2), rand(-.3, .3), 0, rand(-.3, .3), 0x3399ff, .4, 2, 2, .7);
   }
   const elec = S.faults.some(f => f.id === 'elec');
   if (elec && Math.random() < dt * 6) for (let i = 0; i < 6; i++) emitLocal(fireFx, rand(-.5, .5), ceilAt(CPT.z + 0.2) - 0.35, CPT.z + 0.2, rand(-2, 2), rand(-3, 0), rand(-2, 2), 0xfff066, .08, .4, 0);
@@ -251,8 +250,7 @@ function update(dt) {
     d.open += clamp(d.target - d.open, -dt * 1.5, dt * 1.5);
     d.hinge.rotation.y = (s === 'L' ? -1 : 1) * d.open * 1.75;
     const ld = lavDoors[s];
-    ld.open += clamp(ld.target - ld.open, -dt * 3, dt * 3);
-    ld.hinge.rotation.y = ld.swing * ld.open;
+    if (ld) { ld.open += clamp(ld.target - ld.open, -dt * 3, dt * 3); ld.hinge.rotation.y = ld.swing * ld.open; }
     // a broken engine's service hatch swings open, so you can get at it
     const h = engines[s].hatch, broke = engines[s].state === 'fail' || engines[s].state === 'fire';
     h.open += clamp((broke ? 1 : 0) - h.open, -dt * 1.2, dt * 1.2);
@@ -303,7 +301,7 @@ function update(dt) {
     camera.rotation.set(P.pitch, P.yaw, 0);
   } else {
     const bob = S.flying ? 0 : Math.sin(P.walkT * 2.6) * 0.035;
-    camera.position.set(P.x + rand(-shake, shake), P.y + (S.flying ? CPT.y + 1.75 : EYE) + bob + rand(-shake, shake), P.z);
+    camera.position.set(P.x + rand(-shake, shake), P.y + (S.flying ? CPT.y + 1.5 : EYE) + bob + rand(-shake, shake), P.z);
     camera.rotation.set(P.pitch, P.yaw, 0);
   }
   plane.updateMatrixWorld(true);
@@ -531,7 +529,7 @@ function camSpotOK(c) {
     if (!insideHull(c.x, c.z) || Math.abs(c.x) > hullHW(c.z) - 0.15 || c.y < 0.25 || c.y > ceilAt(c.z) - 0.3) return false;
     // the cockpit wall (except through its doorway) and the toilets' walls
     if ((P.z < BULK) !== (c.z < BULK) && Math.abs(c.x) > 0.5) return false;
-    for (const r of [ROOMS[3], ROOMS[8]]) if ((P.x > r[0] && P.x < r[1] && P.z > r[2] && P.z < r[3]) !== (c.x > r[0] - 0.1 && c.x < r[1] + 0.1 && c.z > r[2] - 0.1 && c.z < r[3] + 0.1)) return false;
+    for (const r of LAV_ROOMS) if ((P.x > r[0] && P.x < r[1] && P.z > r[2] && P.z < r[3]) !== (c.x > r[0] - 0.1 && c.x < r[1] + 0.1 && c.z > r[2] - 0.1 && c.z < r[3] + 0.1)) return false;
     return true;
   }
   // outside: not inside the plane, its wings or its engines

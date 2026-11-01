@@ -70,9 +70,9 @@ const DEFS = {
     resolve: () => {}, fail: () => {},
   },
   toilet: {
-    group: 'lav', sided: true, drain: 0.03, deadline: 50, penalty: 2, minor: true,
-    title: s => `🚽 ${s === 'L' ? 'FRONT' : 'REAR'} LAVATORY FLOODING`,
-    steps: [{ label: 'Plunge the toilet', at: 'lav$', type: 'hold', dur: 2.5 }],
+    drain: 0.03, deadline: 50, penalty: 2, minor: true,
+    title: () => '🚽 LAVATORY FLOODING',
+    steps: [{ label: 'Plunge the toilet', at: 'lavR', type: 'hold', dur: 2.5 }],
     start: () => {}, resolve: () => {},
     fail: () => { S.needs.comfort -= 35; say('The whole plane smells... unforgettable.', 'bad'); },
   },
@@ -138,7 +138,7 @@ function heldTools() {
 const SERVICES = {
   pa: { icon: '📢', name: 'Calm announcement', where: 'Cockpit · PA handset', cd: 12, label: () => 'Make a calm announcement',
     fn: () => { S.needs.calm += 30; say(pick(['"This is your captain. Everything is... under control."', '"Just a little bump, folks!"', '"That noise is normal. Probably."', '"Fun fact: this plane can fly on one propeller!"', '"Please ignore anyone you see walking on the wing."', '"If you see a crocodile, no you didn\'t."', '"The chicken in row 3 is NOT a flight attendant."', '"Please remain seated unless you are being thrown."', '"Our in-flight entertainment today is: panic."'])); } },
-  blankets: { icon: '🛏', name: 'Blankets & pillows', where: 'Front galley closet', cd: 12, label: () => 'Hand out blankets & pillows',
+  blankets: { icon: '🛏', name: 'Blankets & pillows', where: 'Cockpit closet', cd: 12, label: () => 'Hand out blankets & pillows',
     fn: () => { S.needs.comfort += 40; say('Blankets and pillows for everyone. 😴'); } },
   meals: { icon: '🍽', name: 'Meal service', where: 'Cargo bay · meal cart', cd: 16, hold: 1.5, label: () => 'Serve meals',
     check: () => S.seatbelt ? 'You can\'t serve meals while the seatbelt sign is on!' : null,
