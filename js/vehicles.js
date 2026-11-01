@@ -203,7 +203,7 @@ function exitVehicle(who = LOCAL) {
   v.v = 0;
   if (!who.isLocal) { who.driving = null; netTeleport(who, p.x, v.floor, p.z, v.h); return; }
   Object.assign(P, { x: p.x, z: p.z, y: v.floor, vy: 0 });
-  S.driving = null;
+  S.driving = null; S.chase = false;
 }
 function driveVehicle(v, dt, k = keys) {
   const thr = (k.w || k.arrowup ? 1 : 0) - (k.s || k.arrowdown ? 1 : 0);

@@ -631,8 +631,10 @@ function updateMe(dt) {
     if (ME.bubble) ME.bubble.visible = false;
   }
   const seatCam = (S.driving && !S.driving.push) || S.flying;
-  ME.g.visible = S.chase || !!P.mini || (S.view === 'third' && !seatCam);
-  fadeMe(ME.g.visible && S.camThird && !S.chase ? clamp((S.camDist - 0.9) / 0.9, 0, 1) : 1);
+  // (the chase camera only counts while you're driving or flying: get out, and you're back in your own eyes)
+  const chaseCam = S.chase && !!(S.driving || S.flying);
+  ME.g.visible = chaseCam || !!P.mini || (S.view === 'third' && !seatCam);
+  fadeMe(ME.g.visible && S.camThird && !chaseCam ? clamp((S.camDist - 0.9) / 0.9, 0, 1) : 1);
   const d = playerPose(LOCAL);
   if (P.falling) d.air = true;
   if (carriedByName()) d.cb = 1;

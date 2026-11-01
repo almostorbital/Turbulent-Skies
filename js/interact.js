@@ -345,7 +345,7 @@ function updateFPArms(dt) {
   FP.wasHolding = holding; FP.pickT += dt; FP.throwT += dt;
   const throwing = FP.throwT < 0.4;
   const reaching = grabbing();   // grabbing: show your real (ragdoll) hands, wherever the physics has them
-  fpArms.visible = S.view === 'first' && (holding || pushing || throwing || reaching) && !S.chase && !S.flying;
+  fpArms.visible = S.view === 'first' && (holding || pushing || throwing || reaching) && !(S.chase && S.driving) && !S.flying;
   if (!fpArms.visible) return;
   // picking something up: you crouch (the camera dips) as your hands reach down for it
   const pk = clamp(FP.pickT / PICK_T, 0, 1), dip = holding ? Math.sin(Math.PI * pk) : 0;
