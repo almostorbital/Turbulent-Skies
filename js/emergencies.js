@@ -76,6 +76,16 @@ const DEFS = {
     start: () => {}, resolve: () => {},
     fail: () => { S.needs.comfort -= 35; say('The whole plane smells... unforgettable.', 'bad'); },
   },
+  // a flock of birds flies into an engine: it stalls, stuffed with feathers (pull them out, or it catches fire)
+  birds: {
+    group: 'eng', sided: true, drain: 0.4, deadline: 55, penalty: 8,
+    title: s => `🐦 BIRD STRIKE: ${sideName(s)} ENGINE`,
+    steps: [{ label: 'Pull the feathers out of the $ engine (its panel is open)', at: 'eng$', type: 'hold', dur: 3.5 }],
+    start: f => { netEvent('birds', f.side); birdStrike(f.side); },
+    tick: f => { if (f.age > 1.2 && engines[f.side].state === 'ok') setEngine(f.side, 'fail'); },   // (once the flock gets there)
+    resolve: f => { setEngine(f.side, 'ok'); say('Feathers out! The engine coughs back to life. 🪶', 'good'); },
+    fail: f => { say(`All those feathers caught fire in the ${sideWord(f.side)} engine!`, 'bad'); setTimeout(() => spawnFault('fire', f.side, true), 300); },
+  },
   // fuel running low: a tanker plane flies up alongside and lowers its hose to the left wing's fuel pipe
   refuel: {
     noRandom: true, drain: 0, deadline: 70, penalty: 0,

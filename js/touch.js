@@ -13,7 +13,7 @@ touchUI.innerHTML = `
     <button class="tb" data-k=" ">⤒<small>jump</small></button>
     <button class="tb main" data-k="grab">✊<small>interact</small></button>
   </div>
-  <div id="tmenu"><button class="tb sm" data-k="p">II</button><button class="tb sm" data-k="h">?</button></div>`;
+  <div id="tmenu"><button class="tb sm" data-k="p">II</button><button class="tb sm" data-k="h">?</button><button class="tb sm" data-k="t">🎙</button></div>`;
 document.body.appendChild(touchUI);
 const tbtn = k => touchUI.querySelector(`[data-k="${k}"]`);
 
@@ -98,7 +98,9 @@ setInterval(() => {
   touchUI.style.display = on ? 'block' : 'none';
   if (!on) return;
   const walking = !S.driving && !S.flying;
-  tbtn('c').style.display = '';   // (first / third person on foot, inside / outside driving and flying)
+  tbtn('c').style.display = '';
+  tbtn('t').style.display = NET.mode === 'solo' ? 'none' : '';   // (voice chat: online only)
+  tbtn('t').classList.toggle('on', VOICE.on);   // (first / third person on foot, inside / outside driving and flying)
   tbtn('f').style.display = S.driving && S.driving.kind === 'bus' ? '' : 'none';
   const carrying = carryingName();
   tbtn('q').style.display = S.held || carrying || (S.driving && S.driving.kind === 'bus') ? '' : 'none';

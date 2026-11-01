@@ -407,6 +407,7 @@ function applySnap(m) {
       else if (e[0] === 'nuke') nukeLooks(e[1], e[2], e[3]);
       else if (e[0] === 'busboom') busBoom();
       else if (e[0] === 'refueled') tankerPump();
+      else if (e[0] === 'birds') birdStrike(e[1]);
       else if (e[0] === 'dart') spawnDart(e[1], e[2], e[3], e[4], e[5], e[6], false);
       else if (e[0] === 'whack') { quack(); burstConfetti(e[1], e[2], e[3], 12); }
       else if (e[0] === 'eject' && passengers[e[1]].state !== 'gone') ejectPassenger(passengers[e[1]]);

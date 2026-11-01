@@ -145,3 +145,46 @@ function miniCam(shake) {
   camera.position.set(m.x + Math.sin(m.yaw) * 5 + rand(-shake, shake), m.y + 1.6, m.z + Math.cos(m.yaw) * 5);
   camera.lookAt(plane.localToWorld(tmpV.set(m.x - Math.sin(m.yaw) * 4, m.y + Math.sin(m.pitch) * 4, m.z - Math.cos(m.yaw) * 4)));
 }
+
+// ---------------------------------------------------------------- bird strikes
+// A flock comes at the plane head-on; most of it smacks into one engine in a burst of feathers, a few go
+// past (and one or two splat on the windscreen). Just looks and sounds: the emergency is in emergencies.js.
+const flock = [];
+const birdMat = std(0x2b2b30, { roughness: .8, side: THREE.DoubleSide });
+function makeBird() {
+  const g = new THREE.Group(), body = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), birdMat); body.scale.set(0.8, 0.7, 1.6); g.add(body);
+  for (const s of [-1, 1]) {
+    const w = new THREE.Group(); w.position.x = s * 0.08; g.add(w);
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(0.45, 0.16), birdMat); m.position.x = s * 0.22; m.rotation.x = -Math.PI / 2; w.add(m);
+    g.userData[s < 0 ? 'wl' : 'wr'] = w;
+  }
+  g.scale.setScalar(2.2);   // (big gulls)
+  plane.add(g); return g;
+}
+function birdStrike(side) {
+  const s = side === 'L' ? -1 : 1;
+  for (let i = 0; i < 24; i++) {
+    const g = flock.find(b => !b.on) || (flock.push({ g: makeBird() }), flock[flock.length - 1]);
+    const hit = i < 18, glass = i >= 22;
+    const tx = glass ? rand(-0.8, 0.8) : hit ? s * ENG_X + rand(-0.8, 0.8) : s * ENG_X + rand(-6, 6), ty = glass ? 1.6 : hit ? ENG_Y + rand(-0.8, 0.8) : rand(-2, 5);
+    Object.assign(g, { on: true, hit, glass, x: tx + rand(-3, 3), y: ty + rand(-2, 3), z: -150 - rand(0, 40) - i * 2, tx, ty, ph: rand(0, 6) });
+    g.g.visible = true;
+  }
+}
+function updateBirds(dt) {
+  for (const b of flock) {
+    if (!b.on) continue;
+    const tz = b.glass ? -7.2 * K : PROP_Z;
+    const step = 140 * dt, k = Math.min(1, step / Math.max(0.01, tz - b.z));
+    b.x += (b.tx - b.x) * k; b.y += (b.ty - b.y) * k; b.z += step;
+    b.g.position.set(b.x, b.y, b.z);
+    const flap = Math.sin(S.t * 22 + b.ph) * 0.7; b.g.userData.wl.rotation.z = flap; b.g.userData.wr.rotation.z = -flap;
+    if ((b.hit || b.glass) && b.z >= tz) {
+      b.on = false; b.g.visible = false;
+      for (let i = 0; i < 8; i++) emitLocal(smokeFx, b.x, b.y, b.z, rand(-3, 3), rand(-1, 3), rand(2, 10), pick([0xffffff, 0xdddddd, 0x8a7a6a]), 0.15, rand(0.8, 1.6), 1, 0.9);
+      if (b.glass) emitLocal(smokeFx, b.x, b.y, b.z + 0.1, 0, 0, 0, 0xb02020, 0.25, 3, 0.5, 0.9);
+      S.shake = Math.max(S.shake, 0.5); if (Math.random() < 0.4) beep(rand(90, 140), 0.12, 'square', 0.06);
+    }
+    if (b.z > 40) { b.on = false; b.g.visible = false; }
+  }
+}

@@ -82,6 +82,7 @@ function updateFlight(dt, speed, prog) {
     // emergencies
     for (const f of [...S.faults]) {
       f.age += dt;
+      if (f.def.tick) f.def.tick(f);
       S.integrity -= f.def.drain * (1 + f.age / 30) * dt;
       if (f.age >= f.def.deadline) endFault(f, true);
     }
@@ -330,7 +331,7 @@ function update(dt) {
     camera.rotation.set(P.pitch, P.yaw, 0);
   }
   plane.updateMatrixWorld(true);
-  updateTanker(dt);
+  updateTanker(dt); updateBirds(dt);
   if (H) { hostMinis(); updateItems(dt); cargoHost(dt); updatePassengers(dt); updateHeld(); hostCarry(); hostGrabs(dt); netShoveBags(dt); chatter(dt); }
   else netAnimate(dt);
   updateAvatars(dt);

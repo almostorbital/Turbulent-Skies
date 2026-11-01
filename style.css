@@ -11,6 +11,8 @@ canvas { display: block; }
 #stormTxt.hit { color: #ff6b6b; }
 .need { display: grid; grid-template-columns: 22px 1fr; gap: 6px; align-items: center; font-size: 14px; }
 .need .bar { height: 7px; margin: 3px 0; }
+#voiceList { position: fixed; left: 12px; bottom: 16px; font-size: 13px; font-weight: 700; text-shadow: 0 1px 3px #000; }
+html.touch #voiceList { bottom: auto; top: 200px; }
 #menuBtn { position: fixed; top: 10px; left: calc(50% + 150px); pointer-events: auto; font: 700 13px system-ui, sans-serif; color: #fff; background: rgba(12,20,32,.7); border: 1px solid rgba(255,255,255,.35); border-radius: 12px; padding: 5px 12px; cursor: pointer; }
 #menuBtn:hover { background: rgba(40,60,90,.85); }
 html.touch #menuBtn { display: none; }

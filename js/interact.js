@@ -385,6 +385,7 @@ function keyDown(k, repeat) {
   if (k === 'enter' && S.running && !S.over && S.paused) resume();
   if ((k === 'v' || (k === 'c' && !S.driving && !S.flying)) && S.running && !S.over) { S.view = S.view === 'third' ? 'first' : 'third'; sayLocal(S.view === 'third' ? '🎥 Third person (V for first person)' : '👀 First person (V for third person)'); }
   if (k === 'c' && (S.driving || S.flying)) S.chase = !S.chase;
+  if (k === 't' && S.running && !S.over) toggleVoice();
   if (k === 'p' && S.running && !S.over) { if (S.paused) resume(); else showPause(); }
   if ((k === 'h' || k === '?') && S.running && !S.over) { if (S.helpOpen) resume(); else showPause(true); }
   if (k === 'escape') { if (S.helpOpen) resume(); else if (S.running && !S.over && !S.paused) showPause(); }
@@ -460,6 +461,7 @@ function helpHTML() {
       <tr><td>${k_('E')} on the mini plane</td><td>In flight: fly it alongside! Mouse steers, ${k_('W')} faster, ${k_('S')} slower, ${k_('E')} to land back in the big plane</td></tr>
       <tr><td>⛽ Fuel low</td><td>A tanker flies over the left wing: hold ${k_('E')} at the left fuel pipe to hook up its hose</td></tr>
       <tr><td>${k_('V')}</td><td>Switch between first person and third person</td></tr>
+      <tr><td>${k_('T')}</td><td>Online: microphone on/off. Players near you hear you (closer is louder)</td></tr>
       <tr><td>${k_('H')}</td><td>This help screen</td></tr>
     </table></div>`;
   const touch = `<div>
@@ -480,9 +482,10 @@ function showPause(help) {
   $('ovBox').classList.toggle('wide', !!help);
   $('ovBox').innerHTML = help
     ? helpHTML() + '<button class="big" id="resumeBtn">Back to the game</button>'
-    : '<h1>⏸ Paused</h1><p>The plane will wait for you. Probably.</p><button class="big" id="resumeBtn">Resume</button> <button class="big alt" id="helpBtn">🎮 Controls</button> <button class="big alt" id="respawnBtn">↺ Respawn</button><p style="opacity:.7;font-size:13px">or press Enter / P · stuck somewhere? Respawn</p>';
+    : `<h1>⏸ Paused</h1><p>The plane will wait for you. Probably.</p><button class="big" id="resumeBtn">Resume</button> <button class="big alt" id="helpBtn">🎮 Controls</button> <button class="big alt" id="respawnBtn">↺ Respawn</button>${NET.mode !== 'solo' ? ` <button class="big alt" id="voiceBtn">🎙 Mic ${VOICE.on ? 'off' : 'on'}</button>` : ''}<p style="opacity:.7;font-size:13px">or press Enter / P · stuck somewhere? Respawn</p>`;
   $('resumeBtn').onclick = resume;
   if ($('respawnBtn')) $('respawnBtn').onclick = () => { resume(); respawnMe(); };
+  if ($('voiceBtn')) $('voiceBtn').onclick = () => { resume(); toggleVoice(); };
   if ($('helpBtn')) $('helpBtn').onclick = () => showPause(true);
   $('overlay').style.display = 'flex';
 }
