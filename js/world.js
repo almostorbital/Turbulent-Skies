@@ -45,12 +45,12 @@ for (let i = 0; i < 14; i++) {
   const hill = new THREE.Mesh(new THREE.ConeGeometry(r, r * 0.8, 18), new THREE.MeshLambertMaterial({ color: 0x3f8f45 }));
   hill.position.y = r * 0.4; g.add(sand, hill);
   g.position.set(rand(-1500, 1500), -400, rand(-3000, 200)); g.visible = false;
-  scene.add(g); scenery.push({ o: g, kind: 'island' });
+  scene.add(g); scenery.push({ o: g, kind: 'island', r });
 }
 function scrollScenery(worldSpeed, dt) {
   for (const it of scenery) {
     it.o.position.z += worldSpeed * dt;
-    if (it.o.position.z > 400) {
+    if (it.o.position.z > 400 && !it.hold) {   // (not the island someone's standing on)
       if (it.kind === 'cloud') { const [x, y] = clearSpot(); it.o.position.set(x, y, rand(-2800, -2400)); }
       else it.o.position.set(PW.x + rand(-1500, 1500), -400, rand(-3200, -2800));
     }

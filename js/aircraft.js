@@ -71,7 +71,7 @@ function updateTanker(dt) {
 // steers; E again (near the big plane) lands you back in its cargo bay. The host moves the item to
 // wherever its pilot says it is, so everyone sees it.
 function startMini(it) {
-  if (P.mini) return;
+  if (P.mini || P.sky || P.falling) return;
   if (!inAir()) return say('✈ The mini plane only flies once we\'re in the air. Bring it along!');
   GRAB.hands = [null, null]; GRAB.mode = null; keys.grab = false;
   const s = P.x < 0 ? -1 : 1;

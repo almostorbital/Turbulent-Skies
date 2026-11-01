@@ -216,6 +216,7 @@ function hostOnData(r, m) {
     case 'vpush': shoveVehicle(vehicles[m.i], m.dx, m.dz); break;   // a player bumped into a vehicle
     case 'knock': knockOver(passengers[m.i], m.vx, m.vz); break;    // …or ran someone over
     case 'fire': { const it = items[m.i]; if (it && it.type.weapon) weaponFire(r, it); break; }
+    case 'punch': hostPunch(r, m.yaw); break;
     case 'mini': { const it = items[m.i]; if (it && it.type === BAGS.miniplane) { if (m.on) miniTaken(it, r); else if (it.pilot === r) miniLanded(it); } break; }   // took off / landed in the mini plane   // …or used a weapon
     case 'kick': { const it = items[m.i]; if (it && it.state === 'free') { it.vx = m.vx; it.vz = m.vz; it.vy = 2.5; } break; }   // …or kicked the beach ball
     case 'vehAct': if (r.driving) vehicleAction(r.driving); break;
@@ -408,6 +409,7 @@ function applySnap(m) {
       else if (e[0] === 'busboom') busBoom();
       else if (e[0] === 'refueled') tankerPump();
       else if (e[0] === 'birds') birdStrike(e[1]);
+      else if (e[0] === 'punch') punchLooks(e[1]);
       else if (e[0] === 'dart') spawnDart(e[1], e[2], e[3], e[4], e[5], e[6], false);
       else if (e[0] === 'whack') { quack(); burstConfetti(e[1], e[2], e[3], 12); }
       else if (e[0] === 'eject' && passengers[e[1]].state !== 'gone') ejectPassenger(passengers[e[1]]);

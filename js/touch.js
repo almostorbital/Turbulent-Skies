@@ -106,7 +106,9 @@ setInterval(() => {
   tbtn('q').style.display = S.held || carrying || (S.driving && S.driving.kind === 'bus') ? '' : 'none';
   tbtn(' ').style.display = walking ? '' : 'none';
   tbtn('r').style.display = walking && !S.held ? '' : 'none';
-  tbtn('fire').style.display = heldWeapon() ? '' : 'none';
+  tbtn('fire').style.display = walking ? '' : 'none';
+  tbtn('fire').firstChild.textContent = heldWeapon() ? '💥' : '👊';
+  tbtn('fire').querySelector('small').textContent = heldWeapon() ? 'use' : 'punch';
   tbtn(' ').querySelector('small').textContent = carriedByName() ? 'wriggle' : 'jump';
   tbtn('q').querySelector('small').textContent = S.driving ? 'door' : 'put down';
   tbtn('grab').querySelector('small').textContent = S.driving && S.driving.push ? 'let go' : S.driving || S.flying ? 'get up' : S.held || carrying ? 'throw' : 'interact';

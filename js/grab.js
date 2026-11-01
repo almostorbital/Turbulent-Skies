@@ -11,7 +11,7 @@ let interactMouse = false;
 canvas.addEventListener('mousedown', e => { if (e.button === 0) interactMouse = true; });   // left click is Interact
 addEventListener('mouseup', e => { if (e.button === 0) interactMouse = false; });
 canvas.addEventListener('contextmenu', e => e.preventDefault());
-canvas.addEventListener('mousedown', e => { if (e.button === 2) useHeldWeapon(); });   // right-click: use the weapon you're holding
+canvas.addEventListener('mousedown', e => { if (e.button === 2) { if (heldWeapon()) useHeldWeapon(); else punch(); } });   // right-click: use the weapon you're holding, or punch
 addEventListener('blur', () => { interactMouse = false; });
 
 const grabbing = () => S.running && !S.paused && (interactMouse || keys.grab) && GRAB.mode === 'grab' && !S.held && !carryingName() && !S.driving && !S.flying && !P.sitV

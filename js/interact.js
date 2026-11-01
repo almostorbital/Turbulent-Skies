@@ -161,6 +161,7 @@ function setPrompt(html, dim) {
 const interactDown = () => interactMouse || keys.grab;
 function interact(dt) {
   $('holdbar').style.display = 'none';
+  if (P.sky) { setPrompt(P.sky.island ? '🏝 <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> explore the island · <kbd>E</kbd> wave for a pickup' : P.sky.chute ? '🪂 <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> steer for the island!' : '🪂 <kbd>Space</kbd> open your parachute · <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> steer', true); return; }
   if (P.mini) { setPrompt(`✈ <kbd>W</kbd> faster <kbd>S</kbd> slower · steer with the mouse · <kbd>E</kbd> land back in the big plane`, true); return; }
   const rDown = interactDown(), rise = rDown && !GRAB.mode;
   if (!rDown) GRAB.mode = null;
@@ -389,7 +390,7 @@ function keyDown(k, repeat) {
   if (k === 'p' && S.running && !S.over) { if (S.paused) resume(); else showPause(); }
   if ((k === 'h' || k === '?') && S.running && !S.over) { if (S.helpOpen) resume(); else showPause(true); }
   if (k === 'escape') { if (S.helpOpen) resume(); else if (S.running && !S.over && !S.paused) showPause(); }
-  if (k === 'e' || k === 'fire') { if (heldWeapon()) useHeldWeapon(); else if (k === 'e') S.press = true; }   // (E fires a held weapon)
+  if (k === 'e' || k === 'fire') { if (heldWeapon()) useHeldWeapon(); else if (k === 'e') S.press = true; else punch(); }   // (E fires a held weapon; the touch 💥/👊 button punches)
   if (k === 'q') S.drop = true;
   if (k === 'f') S.act = true;
   if (k === ' ') S.jump = true;
@@ -460,6 +461,7 @@ function helpHTML() {
       <tr><td>Hold ${k_('R')}</td><td>Go floppy (you're a ragdoll!) — let go to get back up</td></tr>
       <tr><td>${k_('E')} on the mini plane</td><td>In flight: fly it alongside! Mouse steers, ${k_('W')} faster, ${k_('S')} slower, ${k_('E')} to land back in the big plane</td></tr>
       <tr><td>⛽ Fuel low</td><td>A tanker flies over the left wing: hold ${k_('E')} at the left fuel pipe to hook up its hose</td></tr>
+      <tr><td>Right mouse</td><td>Punch whoever's in front of you (or use the weapon you're holding)</td></tr>
       <tr><td>${k_('V')}</td><td>Switch between first person and third person</td></tr>
       <tr><td>${k_('T')}</td><td>Online: microphone on/off. Players near you hear you (closer is louder)</td></tr>
       <tr><td>${k_('H')}</td><td>This help screen</td></tr>

@@ -299,6 +299,7 @@ function update(dt) {
   // --- player & camera
   rideVehicles();
   if (P.mini) updateMini(dt);
+  if (P.sky) updateSkydive(dt);
   updatePlayer(dt);
   S.shake = Math.max(0, S.shake - dt * 2);
   const shake = S.turb * 0.05 + S.shake * 0.08;
@@ -313,6 +314,8 @@ function update(dt) {
     // outside view from behind the plane (toggle with C while flying)
     camera.position.set(rand(-shake, shake), 9, 42);
     camera.lookAt(plane.localToWorld(tmpV.set(0, 1, -25)));
+  } else if (P.sky) {
+    skyCam(shake);    // skydiving (or standing on an island)
   } else if (P.mini) {
     miniCam(shake);   // flying the mini plane: following behind it
   } else if (S.view === 'third' && !S.flying && !(S.driving && !S.driving.push)) {
@@ -633,13 +636,13 @@ function updateMe(dt) {
   const seatCam = (S.driving && !S.driving.push) || S.flying;
   // (the chase camera only counts while you're driving or flying: get out, and you're back in your own eyes)
   const chaseCam = S.chase && !!(S.driving || S.flying);
-  ME.g.visible = chaseCam || !!P.mini || (S.view === 'third' && !seatCam);
+  ME.g.visible = !P.sky && (chaseCam || !!P.mini || (S.view === 'third' && !seatCam));
   fadeMe(ME.g.visible && S.camThird && !chaseCam ? clamp((S.camDist - 0.9) / 0.9, 0, 1) : 1);
   const d = playerPose(LOCAL);
   if (P.falling) d.air = true;
   if (carriedByName()) d.cb = 1;
   // on your feet, your body is an active ragdoll (ragdoll.js); sitting, driving, flying or carried, it's animated
-  const active = !P.falling && !d.cb && !S.flying && !P.sitV && !P.mini && !(S.driving && !S.driving.push);
+  const active = !P.falling && !P.sky && !d.cb && !S.flying && !P.sitV && !P.mini && !(S.driving && !S.driving.push);
   if (!active) { ME.rag = null; poseAvatar(ME, d, dt); return; }
   let Rg = ME.rag;
   // thrown by someone, or holding R: go limp

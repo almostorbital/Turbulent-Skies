@@ -140,6 +140,7 @@ function respawn() {
 }
 // the Respawn button (pause menu): stuck somewhere? back aboard by the front galley, no penalty
 function respawnMe() {
+  if (P.sky) return endSkydive('↺ Respawned: back by the front galley.');
   if (P.mini) endMini();
   if (!S.running || S.over) return;
   if (carriedByName()) return say(`${carriedByName()} is carrying you: mash Space to wriggle free first!`, 'bad');
@@ -165,7 +166,9 @@ function startFalling(vx, vz, msg) {
   beep(800, 1.2, 'sine', .06);
 }
 function updatePlayer(dt) {
+  if (P.sky) return;   // (skydiving: skydive.js)
   if (P.falling) {
+    if (inAir() && P.fallT > 0.6) return startSkydive();   // (a moment of tumbling, then the long way down)
     P.fallT += dt; P.vy -= 20 * dt; P.vz += 40 * dt;
     P.x += P.vx * dt; P.y += P.vy * dt; P.z += P.vz * dt;
     $('fade').style.opacity = clamp((P.fallT - 1) / 1.2, 0, 1);
@@ -211,7 +214,7 @@ function updatePlayer(dt) {
     // (arms out, grabbing: you lean into it and it barely moves you; and just after climbing back up, you get a
     // moment to find your feet)
     const brace = S.t - (P.mantleT ?? -9) < 1.5 ? 0 : grabbing() ? 0.3 : 1;
-    if (!insideHull(P.x, P.z)) { mz += ((len > 0 ? 1.3 : 0.2) + S.turb * 2.5) * brace; mx += S.gust * (len > 0 ? 1 : 0.4) * brace; }
+    if (!insideHull(P.x, P.z)) { mz += ((len > 0 ? 0.55 : 0.15) + S.turb * 2.5) * brace; mx += S.gust * (len > 0 ? 0.7 : 0.3) * brace; }   // (gentle enough to get round behind the engines)
     else mx += S.gust * 0.3;
     cabinForces(P, force);
     mx += force.x * 0.6; mz += force.z * 0.45;
@@ -287,11 +290,13 @@ function updatePlayer(dt) {
     if (d < it.r + 0.35 && d > 0.001) { it.vx += dx / d * 30 * dt; it.vz += dz / d * 30 * dt; }
   }
 
-  // propeller wash knocks you right off the wing
+  // propeller wash: beside the front half of a running engine it shoves you back and outwards (you can lean into
+  // it, or go round behind the engine, where it's calm, to get to the far side of the wing)
   const ax = Math.abs(P.x), e = engines[P.x < 0 ? 'L' : 'R'];
-  if (S.phase !== 'airport' && !holdingWall() && onWing(P.x, P.z) && ax > ENG_X - 2.3 && ax < ENG_X + 2.3 && P.z < ENG_Z1 + 0.3 && e.spin > 8) {
-    startFalling(Math.sign(P.x) * 6, 8, 'The propeller blast blew you clean off the wing!');
-    return;
+  if (S.phase !== 'airport' && !holdingWall() && onWing(P.x, P.z) && Math.abs(ax - ENG_X) < ENG_R + 0.9 && P.z < ENG_Z && e.spin > 8) {
+    const k = (e.spin / SPIN.ok) * (1 - clamp((P.z - ENG_Z0) / (ENG_Z - ENG_Z0), 0, 1) * 0.6);
+    P.z += 2.6 * k * dt; P.x += Math.sign(P.x - Math.sign(P.x) * ENG_X || P.x) * 0.8 * k * dt;
+    if (S.t - (S.washT || -9) > 4) { S.washT = S.t; say('💨 The propeller wash is shoving you! Go round behind the engine.'); }
   }
   const g = groundAt(P.x, P.z);
   if (S.jump && g !== null && P.y <= g + 0.03) P.vy = 4.2;

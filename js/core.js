@@ -45,7 +45,7 @@ const DOOR_Z0 = -5.76 * K, DOOR_Z1 = -3.44 * K, DOOR_SILL = 0.2 * K, DOOR_TOP = 
 const WINDOWS = [[-2.88, -1.44], [-0.96, 0.48], [0.88, 2.48]].map(w => w.map(z => z * K)), WIN_Y0 = 1.48 * K, WIN_Y1 = 2.6 * K;
 // the model's own fittings: the bathroom (two walls and a toilet, open to the aisle) on the right just behind the
 // cabin, the fire extinguisher holder and the two food dispensers on the cockpit wall, and the cargo ramp button
-const BATH = { x0: 0.48, z0: 1.63, z1: 3.55, toilet: { x: 1.05, z: 2.65 } };
+const BATH = { x0: 0.48, z0: 2.21, z1: 3.5, toilet: { x: 1.1, z: 2.8 } };
 const EXT_HOLDER = { x: 1.07, y: 1.05, z: -3.72 }, DISPENSER = { x: -1.07, y: 1.2, z: -3.6 }, RAMP_BUTTON = { x: 1.52, y: 1.45, z: 4.87 };
 const GALLEY = DOOR_Z1 + 0.15, CARGO = BATH.z0;                  // the cabin runs past the windows, up to the bathroom; then the cargo bay
 // how wide (half) and how tall the inside is along the plane: the nose and tail taper in

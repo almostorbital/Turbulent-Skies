@@ -415,3 +415,44 @@ function bananaSlips() {
     }
   }
 }
+
+// ---------------------------------------------------------------- punching
+// Right-click with empty hands (👊 on touch screens): whoever's right in front of you (another player, or a
+// passenger) gets knocked flying. The host decides who got hit; everyone sees the swing.
+let punchT = -9;
+function punch() {
+  if (S.t - punchT < 0.45 || !S.running || S.paused || P.sky || P.mini || S.driving || S.flying || P.sitV || P.falling) return;
+  punchT = S.t; FP.throwT = 0;   // (your arms fling forward)
+  if (isClient()) netSend({ t: 'punch', yaw: P.yaw }); else hostPunch(LOCAL, P.yaw);
+}
+function hostPunch(who, yaw) {
+  const me = who.isLocal ? P : who.pose, fx = -Math.sin(yaw), fz = -Math.cos(yaw);
+  netEvent('punch', idOf(who)); punchLooks(idOf(who));
+  const inReach = (x, y, z) => { const dx = x - me.x, dz = z - me.z, d = Math.hypot(dx, dz); return d > 0.05 && d < 1.5 && (dx * fx + dz * fz) / d > 0.45 && Math.abs(y - me.y) < 1.3; };
+  const v = { x: fx * 7, y: 3.5, z: fz * 7 };
+  for (const w of [LOCAL, ...NET.remotes]) {
+    if (w === who) continue;
+    const q = w.isLocal ? P : w.pose;
+    if (!inReach(q.x, q.y, q.z)) continue;
+    if (w.isLocal) launchMe(v); else if (w.conn && w.conn.open) w.conn.send({ t: 'launch', x: v.x, y: v.y, z: v.z });
+    say(`👊 ${who.name} punched ${w.name}!`); beep(110, .18, 'square', .1);
+    return;
+  }
+  for (const p of passengers) {
+    if (!['seated', 'walk', 'wait', 'terminal', 'toBus'].includes(p.state) || !inReach(p.x, p.y, p.z)) continue;
+    if (p.seat) { p.seat.occupant = null; p.seat = null; }
+    p.calling = null; p.next = null; p.run = false;
+    ragdoll(p, v.x * 0.8, v.y, v.z * 0.8);
+    shout(p, pick(['OW!', 'HEY!', 'What was THAT for?!', 'I\'m telling the airline!', 'Ouch!']), 2.5);
+    if (inAir()) S.needs.calm = Math.max(0, S.needs.calm - 3);
+    beep(110, .18, 'square', .1);
+    return;
+  }
+}
+// (everyone) the swing: a whoosh, and the puncher's arm goes out
+function punchLooks(id) {
+  sweep(260, 90, 0.14, 'square', 0.04);
+  const a = id === myIdForAvatars() ? null : NET.mode === 'host' ? (NET.remotes.find(r => r.id === id) || {}).avatar : avatars[id];
+  if (a) { a.act = 'throw'; a.actT = 0; }
+}
+const myIdForAvatars = () => NET.mode === 'host' ? 'host' : myId;

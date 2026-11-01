@@ -183,7 +183,7 @@ function hullSegment(z0, z1, [w0, w1]) {
   // (the button on the wall is the model's own)
   station('ramp', 'Cargo ramp button', 'Cargo bay', box(0.35, 0.6, 0.6, M.hit, RAMP_BUTTON.x, RAMP_BUTTON.y, RAMP_BUTTON.z));
   // a cargo net along the left wall (the wall closes in, so the net follows it)
-  const netAt = z => -(hullHW(z) - 0.1), NZ = TBZ + 0.6, NS = 0.6;
+  const netAt = z => -(hullHW(z) - 0.1), NZ = TBZ + 0.5, NS = 0.55;
   for (let i = 0; i < 3; i++) { const z = NZ + i * NS; box(0.02, 1.6, 0.02, M.dark, netAt(z), 1.2, z); }
   for (let i = 0; i < 2; i++) for (let j = 0; j < 4; j++) {
     const za = NZ + i * NS, zb = za + NS, xa = netAt(za), xb = netAt(zb);
