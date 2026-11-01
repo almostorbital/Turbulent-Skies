@@ -309,21 +309,24 @@ function sayLocal(text, kind = '') {
 }
 
 // ---------------------------------------------------------------- audio
-let AC = null, droneGain = null, windGain = null, droneOsc = null;
+let AC = null, OUT = null, droneGain = null, windGain = null, droneOsc = null;
+const VOLUME = 2.5;   // everything goes through one master volume (and a limiter, so loud bits don't crackle)
 function initAudio() {
   if (AC) return;
   try {
     AC = new (window.AudioContext || window.webkitAudioContext)();
+    const limit = AC.createDynamicsCompressor(); limit.threshold.value = -10; limit.knee.value = 6; limit.ratio.value = 12;
+    OUT = AC.createGain(); OUT.gain.value = VOLUME; OUT.connect(limit).connect(AC.destination);
     droneOsc = AC.createOscillator(); droneGain = AC.createGain();
     const f = AC.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 220;
     droneOsc.type = 'sawtooth'; droneOsc.frequency.value = 30; droneGain.gain.value = 0.02;
-    droneOsc.connect(f).connect(droneGain).connect(AC.destination); droneOsc.start();
+    droneOsc.connect(f).connect(droneGain).connect(OUT); droneOsc.start();
     const buf = AC.createBuffer(1, AC.sampleRate * 2, AC.sampleRate), d = buf.getChannelData(0);
     for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
     const noise = AC.createBufferSource(); noise.buffer = buf; noise.loop = true;
     const bp = AC.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 500; bp.Q.value = 0.6;
     windGain = AC.createGain(); windGain.gain.value = 0.0;
-    noise.connect(bp).connect(windGain).connect(AC.destination); noise.start();
+    noise.connect(bp).connect(windGain).connect(OUT); noise.start();
   } catch (e) { AC = null; }
 }
 function beep(freq, dur = 0.12, type = 'square', vol = 0.05) {
@@ -332,7 +335,7 @@ function beep(freq, dur = 0.12, type = 'square', vol = 0.05) {
   o.type = type; o.frequency.value = freq;
   g.gain.setValueAtTime(vol, AC.currentTime);
   g.gain.exponentialRampToValueAtTime(0.0001, AC.currentTime + dur);
-  o.connect(g).connect(AC.destination); o.start(); o.stop(AC.currentTime + dur);
+  o.connect(g).connect(OUT); o.start(); o.stop(AC.currentTime + dur);
 }
 // cartoon sound effects
 function sweep(f0, f1, dur, type = 'sine', vol = 0.06) {
@@ -340,7 +343,7 @@ function sweep(f0, f1, dur, type = 'sine', vol = 0.06) {
   const o = AC.createOscillator(), g = AC.createGain(), t = AC.currentTime;
   o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur);
   g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  o.connect(g).connect(AC.destination); o.start(); o.stop(t + dur);
+  o.connect(g).connect(OUT); o.start(); o.stop(t + dur);
 }
 const slideWhistle = up => sweep(up ? 500 : 1400, up ? 1500 : 400, 0.6);
 const boing = () => { sweep(120, 520, 0.25, 'triangle', 0.08); setTimeout(() => sweep(520, 200, 0.2, 'triangle', 0.05), 220); };

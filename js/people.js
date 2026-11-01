@@ -1032,9 +1032,11 @@ function stepPassenger(p, dt) {
   if (p.state === 'walk') {
     p.pose = 'walk';
     const wp = p.path[0];
-    if (wp && walkToward(p, wp.x, wp.z, 1.4, dt)) p.path.shift();
+    if (wp && walkToward(p, wp.x, wp.z, p.run ? 3.2 : 1.4, dt)) p.path.shift();   // (running when they panic)
     if (!p.path.length) {
-      if (p.then === 'sit') { p.state = 'seated'; p.pose = 'sit'; p.x = p.seat.x; p.z = p.seat.z; }
+      if (p.then === 'sit') { p.state = 'seated'; p.pose = 'sit'; p.x = p.seat.x; p.z = p.seat.z; p.run = false; }
+      else if (p.then === 'panic') { p.run = false; sendToSeat(p); }
+      else if (p.then === 'eat') { grabFood(p); sendToSeat(p); }
       else if (p.then === 'board') sendToSeat(p);
       else if (p.then === 'lav') { p.state = 'wait'; p.waitT = rand(4, 7); p.next = () => sendToSeat(p); }
       else if (p.then === 'jump') {
@@ -1084,4 +1086,88 @@ function resolveCall(p) {
   S.needs.calm += 6; S.needs.comfort += 8;
   chime();
   say(pick([`${p.name}: "Oh, thank you so much!"`, `${p.name}: "You're the best captain ever."`, `${p.name}: "Wait, aren't you supposed to be flying?"`]), 'good');
+}
+
+// ---------------------------------------------------------------- the crowd: what passengers get up to on their own
+// (host) Every so often each passenger might: panic and run screaming up and down the aisle in a big
+// emergency, spot food lying about and go and eat it, run away from a loose crocodile, point at things out
+// of the window (the tanker, the birds, someone flying the mini plane), or say hello at the airport.
+const CROWD = { t: 0, lookT: 0 };
+const LOOK_LINES = {
+  tanker: ['THERE\'S A PLANE ON TOP OF US!', 'Is that plane… feeding us?', 'Mid-air refuelling? On a budget airline?'],
+  birds: ['BIRDS! BIRDS!', 'Was that a seagull?!', 'The engine ate a pigeon!'],
+  mini: ['Is that the captain on a TINY plane?', 'Can I have a go on the little plane?', 'Who\'s flying THAT?'],
+  storm: ['Look at those clouds…', 'I don\'t like the look of that storm.', 'Lightning! Did you see that?'],
+};
+const PANIC_LINES = ['WE\'RE ALL GOING TO DIE!', 'AAAAAAAH!', 'I WANT MY MUMMY!', 'LET ME OFF!', 'EVERY PASSENGER FOR THEMSELVES!'];
+const HELLO_LINES = ['Hi captain!', 'Are you our pilot? You look young.', 'Is the plane safe?', 'Ooh, a real pilot!', 'Can I sit by the window?'];
+function crowdAI(dt) {
+  CROWD.t -= dt;
+  if (CROWD.t > 0) return;
+  CROWD.t = 0.5;
+  const air = inAir(), seated = passengers.filter(p => p.state === 'seated' && !p.calling);
+  // panic: something big is wrong and the seatbelt sign is off
+  const big = S.faults.filter(f => !f.def.minor).length + (hole.seg ? 1 : 0) + (S.turb > 0.6 ? 1 : 0);
+  if (air && big && !S.seatbelt && seated.length && Math.random() < 0.06 * big && !passengers.some(p => p.run)) {
+    const p = pick(seated), seat = p.seat;
+    p.state = 'walk'; setPose(p, 'stand'); p.then = 'panic'; p.run = true;
+    p.path = [{ x: seat.x, z: seat.z - 0.7 }, { x: 0, z: seat.z - 0.7 }];
+    for (let i = 0; i < 4; i++) p.path.push({ x: rand(-0.3, 0.3), z: rand(GALLEY + 0.3, CARGO - 0.3) });
+    shout(p, pick(PANIC_LINES), 3);
+  }
+  // food left lying about: whoever's hungry and close enough goes and eats it
+  if (air) for (const it of items) {
+    if (!it.type.food || it.state !== 'free' || it.claimed) continue;
+    const p = seated.filter(p => S.t - (p.fedT ?? -99) > 45 && Math.hypot(p.x - it.x, p.z - it.z) < 4)
+      .sort((a, b) => Math.hypot(a.x - it.x, a.z - it.z) - Math.hypot(b.x - it.x, b.z - it.z))[0];
+    if (!p || !insideHull(it.x, it.z)) continue;
+    it.claimed = p; p.food = it;
+    p.state = 'walk'; setPose(p, 'stand'); p.then = 'eat';
+    p.path = [{ x: p.seat.x, z: p.seat.z - 0.7 }, { x: 0, z: p.seat.z - 0.7 }, { x: clamp(it.x, -W + 0.5, W - 0.5), z: it.z }];
+    shout(p, pick(['Ooh, is that food?', 'Finders keepers!', 'Nobody\'s eating that? Mine!']), 2.5);
+  }
+  // a loose crocodile: anyone on their feet nearby runs the other way
+  const croc = items.find(i => i.alive && i.alive.kind === 'croc' && i.state === 'free' && !i.caged);
+  if (croc) for (const p of passengers) {
+    if (!['walk', 'wait'].includes(p.state) || p.then === 'jump' || Math.hypot(p.x - croc.x, p.z - croc.z) > 3) continue;
+    const away = p.z < croc.z ? -1 : 1, ins = insideHull(p.x, p.z);
+    p.state = 'walk'; p.then = 'panic'; p.run = true;
+    p.path = [{ x: ins ? 0 : p.x + (p.x - croc.x), z: ins ? clamp(p.z + away * 4, BULK + 0.6, REAR - 0.6) : p.z + away * 5 }];
+    if (Math.random() < 0.5) shout(p, pick(YELLS.croc), 2.5);
+  }
+  // something to see out of the window
+  CROWD.lookT -= 0.5;
+  const sight = !air ? null : flock.some(b => b.on) ? 'birds' : TANKER.g.visible ? 'tanker' : items.some(i => i.state === 'mini') ? 'mini' : S.stormOn && S.turb > 0.2 ? 'storm' : null;
+  if (sight && CROWD.lookT <= 0 && seated.length) { CROWD.lookT = rand(3, 6); shout(pick(seated), pick(LOOK_LINES[sight]), 3); }
+  // at the airport: passengers in the terminal say hello as you walk past
+  if (!air) for (const p of passengers) {
+    if (p.state !== 'terminal' || S.t - (p.helloT ?? -99) < 30) continue;
+    const near = [P, ...NET.remotes.map(r => r.pose)].some(q => Math.hypot(q.x - p.x, q.z - p.z) < 2.2);
+    if (near && Math.random() < 0.3) { p.helloT = S.t; shout(p, pick(HELLO_LINES), 2.5); }
+  }
+}
+// a passenger who walked over to some food: they eat it (if it's still there)
+function grabFood(p) {
+  const it = p.food; p.food = null;
+  if (!it || it.state === 'gone') return;
+  it.claimed = null;
+  if (Math.hypot(it.x - p.x, it.z - p.z) > 1.2 || it.state !== 'free') return;
+  it.state = 'gone'; it.g.visible = false; p.fedT = S.t;
+  if (inAir()) S.needs.hunger = Math.min(100, S.needs.hunger + MEAL_FILL);
+  shout(p, pick(['Mmm!', 'Delicious!', 'Best snack ever.']), 2.5);
+}
+// (every screen) heads turn to watch any player who comes close
+const _lookP = [];
+function crowdLook(dt) {
+  _lookP.length = 0; _lookP.push(P); for (const r of NET.remotes) _lookP.push(r.pose);
+  if (isClient()) for (const q of NET.players || []) _lookP.push(q);
+  for (const p of passengers) {
+    if (!p.rig || !['seated', 'terminal', 'wait', 'walk'].includes(p.state)) continue;
+    let best = null, bd = 3.5;
+    for (const q of _lookP) { const d = Math.hypot(q.x - p.x, q.z - p.z); if (d > 0.4 && d < bd) { bd = d; best = q; } }
+    let want = 0;
+    if (best) { const a = Math.atan2(-(best.x - p.x), -(best.z - p.z)) - p.g.rotation.y; want = clamp(Math.atan2(Math.sin(a), Math.cos(a)), -1.1, 1.1); }
+    p.lookY = (p.lookY || 0) + (want - (p.lookY || 0)) * Math.min(1, dt * 4);
+    p.rig.head.rotation.y = p.lookY;
+  }
 }

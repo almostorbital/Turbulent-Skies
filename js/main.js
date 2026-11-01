@@ -332,9 +332,10 @@ function update(dt) {
   }
   plane.updateMatrixWorld(true);
   updateTanker(dt); updateBirds(dt);
-  if (H) { hostMinis(); updateItems(dt); cargoHost(dt); updatePassengers(dt); updateHeld(); hostCarry(); hostGrabs(dt); netShoveBags(dt); chatter(dt); }
+  if (H) { hostMinis(); updateItems(dt); cargoHost(dt); updatePassengers(dt); crowdAI(dt); updateHeld(); hostCarry(); hostGrabs(dt); netShoveBags(dt); chatter(dt); }
   else netAnimate(dt);
   updateAvatars(dt);
+  crowdLook(dt);
   updateMe(dt);
   cargoTick(dt);
   interact(dt);

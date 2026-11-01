@@ -40,7 +40,7 @@ function hearVoice(call, stream) {
   const el = new Audio(); el.muted = true; el.srcObject = stream; el.play().catch(() => {});
   const src = AC.createMediaStreamSource(stream), gain = AC.createGain(), pan = AC.createStereoPanner(), meter = AC.createAnalyser();
   gain.gain.value = 0; meter.fftSize = 256;
-  src.connect(gain).connect(pan).connect(AC.destination); src.connect(meter);
+  src.connect(gain).connect(pan).connect(OUT); src.connect(meter);
   VOICE.in.set(call.peer, { call, el, src, gain, pan, meter, buf: new Uint8Array(meter.fftSize), level: 0 });
 }
 function dropVoice(pid) {
@@ -77,7 +77,7 @@ function updateVoices() {
     if (!p) { v.gain.gain.value = 0; continue; }
     const dx = p.x - P.x, dz = p.z - P.z, d = Math.hypot(dx, dz, (p.y || 0) - P.y);
     const k = clamp(1 - (d - 2) / (VOICE_FAR - 2), 0, 1);
-    v.gain.gain.setTargetAtTime(k * k * 1.6, AC.currentTime, 0.1);
+    v.gain.gain.setTargetAtTime(k * k * 1.4, AC.currentTime, 0.1);   // (times the master VOLUME)
     v.pan.pan.setTargetAtTime(clamp((dx * Math.cos(P.yaw) - dz * Math.sin(P.yaw)) / Math.max(d, 1), -1, 1) * 0.8, AC.currentTime, 0.1);
     // who's talking (for the little list on screen)
     v.meter.getByteTimeDomainData(v.buf);

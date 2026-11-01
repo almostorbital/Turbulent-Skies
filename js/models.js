@@ -195,7 +195,7 @@ function poseModel(p) {
   }
   const N = J.neck[0];
   if (N) {
-    _R.setFromAxisAngle(_Z, r.head.rotation.z);
+    _R.setFromEuler(_E.set(0, r.head.rotation.y, r.head.rotation.z));   // (turning to look, and tilting)
     bones.neck[0].quaternion.copy(qInv(N.parentRest)).multiply(_R).multiply(N.rest);
   }
 }
