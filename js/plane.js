@@ -53,40 +53,6 @@ function hullSegment(z0, z1, [w0, w1]) {
   segments.push(seg);
 }
 
-// The walk-in lavatory (the plane's only one: on the right at the front of the cargo bay), with a door,
-// toilet, sink and mirror. Its stations and door are the 'R' ones.
-function lavRoom() {
-  const side = 'R', s = 1, area = 'Lavatory', LH = 2.1;
-  const z0 = CARGO + 0.25, z1 = CARGO + 2.0, dz0 = z0 + 0.5, dz1 = dz0 + 0.8;
-  const wx = LAV_X, outer = Math.min(hullHW(z0), hullHW(z1)), mid = (wx + outer) / 2, width = outer - wx;
-  box(0.08, LH, dz0 - z0, M.lavWall, wx, LH / 2, (z0 + dz0) / 2);
-  box(0.08, LH, z1 - dz1, M.lavWall, wx, LH / 2, (dz1 + z1) / 2);
-  box(0.08, LH - 1.85, dz1 - dz0, M.lavWall, wx, (LH + 1.85) / 2, (dz0 + dz1) / 2);
-  box(width, LH, 0.08, M.lavWall, mid, LH / 2, z1);
-  box(width, LH, 0.08, M.lavWall, mid, LH / 2, z0);
-  box(width, 0.06, z1 - z0, M.lavWall, mid, LH + 0.02, (z0 + z1) / 2);
-  box(0.4, 0.03, 0.4, M.lamp, mid, LH - 0.02, (z0 + z1) / 2);
-  // toilet against the outer wall
-  const tx = outer - 0.5, tz = (dz0 + dz1) / 2;
-  const bowl = box(0.42, 0.4, 0.5, M.porcelain, tx, 0.2, tz);
-  box(0.44, 0.05, 0.5, M.white, tx, 0.43, tz);
-  box(0.18, 0.5, 0.42, M.porcelain, tx + 0.3, 0.6, tz);
-  station('lav' + side, 'Lavatory toilet', area, bowl);
-  // sink and mirror on the end wall
-  const sz = z1 - 0.25, mz = z1 - 0.06;
-  box(0.6, 0.08, 0.4, M.white, mid, 0.85, sz);
-  cyl(0.14, 0.1, 0.1, M.steel, mid, 0.88, sz);
-  box(0.5, 0.5, 0.02, M.mirror, mid, 1.45, mz);
-  const valve = new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.025, 8, 16), M.red);
-  valve.position.set(mid, 0.6, sz); valve.rotation.x = Math.PI / 2; plane.add(valve);
-  // the door, hinged at dz0
-  const hinge = new THREE.Group(); hinge.position.set(wx, 0, dz0); plane.add(hinge);
-  const door = box(0.06, 1.85, 0.8, M.lavWall, 0, 0.925, 0.4, hinge);
-  textPlane(0.3, 0.18, 'WC', '#2f6db5', '#fff', hinge, -s * 0.035, 1.55, 0.4, -s * Math.PI / 2, 'bold 70px sans-serif');
-  box(0.08, 0.04, 0.12, M.steel, -s * 0.05, 1.0, 0.7, hinge);
-  lavDoors[side] = { hinge, open: 0, target: 0, x: wx, z0: dz0, z1: dz1, swing: -1.5 };
-  station('lavdoor' + side, 'Lavatory door', 'Cargo bay', door, { lavDoor: side });
-}
 
 (function buildPlane() {
   // the cabin walls, in rings, one round each window
@@ -196,25 +162,24 @@ function lavRoom() {
   station('blankets', 'Blanket closet', 'Cockpit', closet, { service: 'blankets' });
   station('overhead', 'Overhead panel', 'Cockpit', over);
 
-  // ---- front galley: the fire extinguisher on the bulkhead, by the exit doors
-  const EXX = (gap + W) / 2;
-  box(0.4, 0.1, 0.12, M.steel, EXX, 0.75, BULK + 0.12);
-  const ext = cyl(0.1, 0.1, 0.55, M.red, EXX, 1.05, BULK + 0.2);
-  cyl(0.04, 0.04, 0.1, M.dark, EXX, 1.38, BULK + 0.2);
-  textPlane(0.4, 0.14, 'FIRE', '#c22', '#fff', plane, EXX, 1.5, BULK + 0.06, 0, 'bold 80px sans-serif');
-  station('extinguisher', 'Fire extinguisher', 'Front galley', ext);
+  // ---- front galley: a fire extinguisher in the model's holder (it's gone while someone has it), and
+  // the model's food dispensers: each press gives out a meal tray to carry to a passenger (cargo.js)
+  const ext = new THREE.Group(); ext.position.set(EXT_HOLDER.x, EXT_HOLDER.y, EXT_HOLDER.z); plane.add(ext);
+  cyl(0.1, 0.1, 0.5, M.red, 0, 0, 0, ext);
+  cyl(0.04, 0.04, 0.1, M.dark, 0, 0.3, 0, ext); box(0.04, 0.04, 0.14, M.dark, 0, 0.33, 0.06, ext);
+  textPlane(0.4, 0.14, 'FIRE', '#c22', '#fff', plane, EXT_HOLDER.x, EXT_HOLDER.y + 0.5, EXT_HOLDER.z - 0.06, 0, 'bold 80px sans-serif');
+  station('extinguisher', 'Fire extinguisher', 'Front galley', box(0.4, 0.7, 0.3, M.hit, 0, 0, 0, ext));
+  window.extinguisher = ext;
+  station('dispenser', 'Food dispenser', 'Front galley', box(0.6, 1.2, 0.5, M.hit, DISPENSER.x, DISPENSER.y, DISPENSER.z));
+  textPlane(0.5, 0.14, '🍽 MEALS', '#2a6', '#fff', plane, DISPENSER.x, DISPENSER.y + 0.75, BULK + 0.09, 0, 'bold 60px sans-serif');
 
   // ---- cargo bay (in the tail, narrowing towards the ramp) & rear lav
-  const cart = box(0.5, 1.0, 0.8, M.steel, -(W - 0.4), 0.5, CARGO + 0.8);
-  for (let i = 0; i < 3; i++) box(0.02, 0.02, 0.6, M.dark, -(W - 0.66), 0.3 + i * 0.3, CARGO + 0.8);
-  station('meals', 'Meal cart', 'Cargo bay', cart, { service: 'meals' });
   const TBZ = CARGO + 1.9, tw = -(hullHW(TBZ) - 0.2);
   box(0.4, 0.05, 1.3, M.steel, tw, 0.95, TBZ);                           // tool shelf
   station('toolbox', 'Toolbox', 'Cargo bay', box(0.5, 0.3, 0.3, M.red, tw + 0.05, 1.13, TBZ));
   box(0.4, 0.04, 0.12, M.steel, tw + 0.05, 1.3, TBZ);
-  const RCZ = REAR - 0.6, rx = hullHW(RCZ);
-  station('ramp', 'Cargo ramp controls', 'Cargo bay', box(0.15, 0.6, 0.45, M.yellow, rx - 0.08, 1.5, RCZ));
-  box(0.17, 0.12, 0.12, M.red, rx - 0.17, 1.65, RCZ);
+  // (the button on the wall is the model's own)
+  station('ramp', 'Cargo ramp button', 'Cargo bay', box(0.35, 0.6, 0.6, M.hit, RAMP_BUTTON.x, RAMP_BUTTON.y, RAMP_BUTTON.z));
   // a cargo net along the left wall (the wall closes in, so the net follows it)
   const netAt = z => -(hullHW(z) - 0.1), NZ = TBZ + 0.6, NS = 0.6;
   for (let i = 0; i < 3; i++) { const z = NZ + i * NS; box(0.02, 1.6, 0.02, M.dark, netAt(z), 1.2, z); }
@@ -223,7 +188,8 @@ function lavRoom() {
     const b = box(0.02, 0.02, Math.hypot(xb - xa, NS), M.dark, (xa + xb) / 2, 0.6 + j * 0.4, (za + zb) / 2);
     b.rotation.y = Math.atan2(xb - xa, NS);
   }
-  lavRoom();
+  // the model's toilet, in its bathroom
+  station('lavR', 'Toilet', 'Bathroom', box(0.6, 0.7, 0.7, M.hit, BATH.toilet.x, 0.35, BATH.toilet.z));
 
   // ---- cabin: overhead bins, lights, seats, movie screen
   const binZ = (GALLEY + CARGO) / 2, binL = CARGO - GALLEY - 0.4, BIN_Y = WIN_Y1 + 0.3;
@@ -406,6 +372,7 @@ const PC = {
   white: new THREE.Color(0xf4f6f9), belly: new THREE.Color(0x8fa3b8), blue: new THREE.Color(0x1f4fa8), red: new THREE.Color(0xd8342c),
   wing: new THREE.Color(0xdfe3e8), glass: new THREE.Color(0x1d2c44), lining: new THREE.Color(0xece6da), ceiling: new THREE.Color(0xf6f3ec),
   dash: new THREE.Color(0x2b3138), glare: new THREE.Color(0x15181c), panel: new THREE.Color(0x3a414a), yoke: new THREE.Color(0x1a1c20),
+  steel: new THREE.Color(0xaeb8c2), button: new THREE.Color(0xe0302a),
 };
 const STRIPE = [0.95, 1.3, 1.36, 1.42].map(y => y * K), BELLY_Y = -1.4 * K;               // paint lines: blue and red stripes, grey belly
 const toGame = new THREE.Matrix4().makeTranslation(0, -PLANE_FLOOR * PLANE_SCALE, PLANE_SHIFT * PLANE_SCALE).multiply(new THREE.Matrix4().makeScale(PLANE_SCALE, PLANE_SCALE, PLANE_SCALE));
@@ -554,11 +521,14 @@ function dressPlane(scene) {
         return v;
       }));
       if (m.determinant() < 0) body.forEach(t => t.reverse());       // (a mirroring transform turns faces round)
-      // keep the half the model has and mirror it for the other side, so both sides match exactly
-      body = splitTris(body, 0, 0).map(triInfo);
-      const half = Math.sign(body.reduce((a, t) => a + t.c.x, 0)) || 1;
-      body = body.filter(t => t.c.x * half > 1e-4 && !(Math.abs(t.c.x) < 0.02 && Math.abs(t.n.x) > 0.9));
-      for (const t of [...body]) body.push([t[2], t[1], t[0]].map(p => { const v = new THREE.Vector3(-p.x, p.y, p.z); if (p.nrm) v.nrm = new THREE.Vector3(-p.nrm.x, p.nrm.y, p.nrm.z); return v; }));
+      // half a plane (only one side modelled) gets mirrored for the other side; a whole one is used as it is
+      body.forEach(triInfo);
+      const left = body.filter(t => t.c.x < -0.05).length, right = body.filter(t => t.c.x > 0.05).length;
+      if (Math.min(left, right) < 0.2 * Math.max(left, right)) {
+        const half = left > right ? -1 : 1;
+        body = splitTris(body, 0, 0).map(triInfo).filter(t => t.c.x * half > 1e-4 && !(Math.abs(t.c.x) < 0.02 && Math.abs(t.n.x) > 0.9));
+        for (const t of [...body]) body.push([t[2], t[1], t[0]].map(p => { const v = new THREE.Vector3(-p.x, p.y, p.z); if (p.nrm) v.nrm = new THREE.Vector3(-p.nrm.x, p.nrm.y, p.nrm.z); return v; }));
+      }
       tris.push(...body);
     });
   }
@@ -594,8 +564,19 @@ function dressPlane(scene) {
   }
   const body = t => Math.abs(t.c.x) <= HULL_X + 0.15 && t.c.z < 21.2;
   const fin = t => t.c.z > 16 * K && t.c.y > 3.45 * K && Math.abs(t.c.x) < 0.4 * K;
+  // (the model's walls have some thickness, and it has inside walls of its own: anything inside the hull
+  // gets cabin colours)
+  const inner = t => Math.abs(t.c.x) < hullHW(t.c.z) - 0.02 && t.c.y > 0.02 && t.c.y < ceilAt(t.c.z) - 0.02 && t.c.z > NOSE - 1 && t.c.z < REAR + 7;
   const paint = t => {
     const c = t.c, n = t.n;
+    if (body(t) && inner(t)) {
+      // the model's fittings get their colours: steel food dispensers, a dark extinguisher holder, a red ramp button
+      const near = (o, rx, ry, rz) => Math.abs(c.x - o.x) < rx && Math.abs(c.y - o.y) < ry && Math.abs(c.z - o.z) < rz;
+      if (near(DISPENSER, 0.32, 0.7, 0.3)) return PC.steel;
+      if (near(EXT_HOLDER, 0.32, 0.35, 0.2)) return PC.panel;
+      if (near(RAMP_BUTTON, 0.25, 0.55, 0.45)) return PC.button;
+      return t.n.y < -0.7 || c.y > ceilAt(c.z) - 0.3 ? PC.ceiling : PC.lining;
+    }
     if (fin(t)) return PC.blue;                                   // the tail fin
     if (!body(t)) return PC.wing;                                 // wings, tailplane
     if (c.y < BELLY_Y) return PC.belly;

@@ -7,13 +7,13 @@ const ROOMS = [
   [-1.3, 1.3, NOSE + 0.6, BULK - 0.2],           // cockpit
   [-0.55, 0.55, BULK - 0.4, BULK + 0.4],         // cockpit door
   [-(W - 0.35), W - 0.35, BULK + 0.2, GALLEY + 0.4],     // front galley, between the exit doors
-  [-(W - 0.35), W - 0.35, GALLEY + 0.3, CARGO + 0.2],    // cabin
+  [-(W - 0.35), W - 0.35, GALLEY + 0.3, BATH.z0 - 0.2],  // cabin
   [-(W - 0.2), W - 0.2, DOOR_Z0 + 0.1, DOOR_Z1 - 0.1],   // in the exit doorways
-  [-(W - 0.35), LAV_X - 0.1, CARGO, REAR + 0.01],        // cargo bay (left of the lav)
-  [LAV_X - 0.1, W - 0.35, CARGO + 2.1, REAR + 0.01],     // cargo bay (behind the lav)
-  [LAV_X + 0.15, W - 0.6, CARGO + 0.37, CARGO + 1.88],   // the lavatory
+  [-(W - 0.35), BATH.x0 - 0.25, BATH.z0 - 0.3, REAR + 0.01],   // the way past the bathroom
+  [-(W - 0.35), W - 0.35, BATH.z1 + 0.2, REAR + 0.01],   // cargo bay
+  [BATH.x0 - 0.3, W - 0.35, BATH.z0 + 0.2, BATH.z1 - 0.2],     // the bathroom (no door: open to the aisle)
 ];
-const LAV_ROOMS = [ROOMS[ROOMS.length - 1]];          // (the camera keeps to its own side of their walls)
+const LAV_ROOMS = [ROOMS[ROOMS.length - 1]];          // (the camera keeps to its own side of its walls)
 const inSeat = (x, z) => seats.some(s => Math.abs(x - s.x) < 0.34 && z > s.z - 0.32 && z < s.z + 0.38);
 function sideOpen(x, z) {
   const side = x < 0 ? 'L' : 'R';
@@ -125,7 +125,7 @@ function areaName(x, z) {
   if (z < BULK) return S.flying ? 'Cockpit · flying' : 'Cockpit';
   if (z < GALLEY + 0.3) return z > DOOR_Z0 && z < DOOR_Z1 ? 'Front galley · exit doors' : 'Front galley';
   if (z > REAR) return 'Cargo ramp';
-  if (x > LAV_X && z > CARGO + 0.25 && z < CARGO + 2) return 'Lavatory';
+  if (x > BATH.x0 && z > BATH.z0 && z < BATH.z1) return 'Bathroom';
   if (z > CARGO) return 'Cargo bay';
   const s = seats.reduce((a, b) => Math.abs(b.z - z) < Math.abs(a.z - z) ? b : a);
   return 'Cabin · row ' + s.row;

@@ -59,6 +59,8 @@ function reachHands(goal) {
 // after the physics: what are the hands touching? (your own screen decides; the host does the moving)
 function updateGrab() {
   if (!grabbing()) { GRAB.hands = [null, null]; if (ME && ME.rag) ME.rag.pins = null; return; }
+  // (something that's gone from your hands, like a meal tray a passenger took, lets your hands go)
+  if (GRAB.hands.some(h => h && h.k === 'item' && (!items[h.i] || items[h.i].state === 'gone'))) GRAB.hands = [null, null];
   const Rg = ME.rag;
   for (let i = 0; i < 2; i++) {
     if (GRAB.hands[i]) continue;

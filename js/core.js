@@ -43,8 +43,11 @@ const NOSE = -9 * K, BULK = -6 * K, REAR = 8.95 * K;
 // the model's holes: an exit door each side, and three windows each side (z from, z to; and how high)
 const DOOR_Z0 = -5.76 * K, DOOR_Z1 = -3.44 * K, DOOR_SILL = 0.2 * K, DOOR_TOP = 2.84 * K;
 const WINDOWS = [[-2.88, -1.44], [-0.96, 0.48], [0.88, 2.48]].map(w => w.map(z => z * K)), WIN_Y0 = 1.48 * K, WIN_Y1 = 2.6 * K;
-const GALLEY = DOOR_Z1 + 0.15, CARGO = WINDOWS[2][1] + 0.3;     // the cabin runs past the windows; then the cargo bay
-const LAV_X = W - 1.3;                                           // the lavatory's inner wall (it's on the right, at the front of the cargo bay)
+// the model's own fittings: the bathroom (two walls and a toilet, open to the aisle) on the right just behind the
+// cabin, the fire extinguisher holder and the two food dispensers on the cockpit wall, and the cargo ramp button
+const BATH = { x0: 0.48, z0: 1.63, z1: 3.55, toilet: { x: 1.05, z: 2.65 } };
+const EXT_HOLDER = { x: 1.07, y: 1.05, z: -3.72 }, DISPENSER = { x: -1.07, y: 1.2, z: -3.6 }, RAMP_BUTTON = { x: 1.52, y: 1.45, z: 4.87 };
+const GALLEY = DOOR_Z1 + 0.15, CARGO = BATH.z0;                  // the cabin runs past the windows, up to the bathroom; then the cargo bay
 // how wide (half) and how tall the inside is along the plane: the nose and tail taper in
 const HULL_TAB = [[-13.4, 0, 0], [-12.6, 1.39, 1.07], [-11.8, 1.71, 1.41], [-11, 1.93, 1.63], [-10.2, 2.12, 1.82], [-9.4, 2.27, 2.13],
   [-9, 2.33, 2.2], [-8.6, 2.37, 2.5], [-8.2, 2.42, 2.8], [-7.8, 2.49, 3.05], [-7.4, 2.54, 3.25], [-7, 2.57, 3.37], [-6.6, 2.6, 3.47],

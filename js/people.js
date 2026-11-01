@@ -183,6 +183,12 @@ const BAGS = {
   banana: { name: 'banana peel', r: 0.12, extra: true, build: g => {
     const b = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.03, 6, 12, Math.PI * 0.9), mat(0xffe135)); b.rotation.x = Math.PI / 2; b.position.y = 0.03; g.add(b);
   } },
+  meal: { name: 'meal tray', r: 0.2, extra: true, meal: true, build: g => {
+    box(0.42, 0.03, 0.3, mat(0x7a8a99), 0, 0.03, 0, g);
+    cyl(0.1, 0.1, 0.02, M.white, -0.08, 0.055, 0, g); sph(0.06, mat(0xd9a066), -0.08, 0.08, 0, g, [1.2, 0.5, 1]);   // chicken (or pasta?)
+    cyl(0.035, 0.03, 0.08, mat(0xff8a1a), 0.12, 0.08, -0.06, g);                                                    // orange juice
+    box(0.08, 0.03, 0.06, mat(0xf2d16b), 0.12, 0.06, 0.07, g);                                                      // a little cake
+  } },
   egg: { name: 'egg', r: 0.08, extra: true, build: g => { sph(0.06, mat(0xfff4dc, { roughness: .3 }), 0, 0.08, 0, g, [1, 1.3, 1]); } },
 };
 // a point (x, y, z) against a bag's box: how far it pokes in, and which way to push it out (null if outside)

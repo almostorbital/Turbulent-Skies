@@ -132,6 +132,10 @@ function actionFor(ud, who = LOCAL) {
     return { key: 'fly', type: 'press', ready: true, label: 'Take the controls', done: () => { takeSeat(who); say(`${who.name} has the controls.`); } };
   }
   if (st.id === 'hole') return null;
+  if (st.id === 'dispenser') {
+    if (!inAir()) return { type: 'info', label: 'Food dispenser (meals once we\'re in the air)' };
+    return { key: 'dispense', type: 'press', ready: true, label: '🍽 Take a meal tray (then carry it to a passenger)', done: () => dispenseMeal() };
+  }
   if (st.service) {
     if (!inAir()) return { type: 'info', label: st.name + ' (once we\'re in the air)' };
     const sv = SERVICES[st.service], cd = S.cd[st.service];

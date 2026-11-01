@@ -134,7 +134,32 @@ function cargoTick(dt) {
   }
 }
 // ---- the host's side: bouncing, floating off, the countdown, and what people make of it all
+// ---- meals: the food dispensers in the galley give out trays; carry one to a seated passenger and they take it
+const MEAL_FILL = 12;                        // how much one meal does for the cabin's hunger
+let dispenseT = -9;
+function dispenseMeal() {
+  if (S.t - dispenseT < 1.5) return;
+  if (items.filter(i => i.type === BAGS.meal && i.state !== 'gone').length >= 4) return say('🍽 There are trays out already: hand those round first!');
+  dispenseT = S.t;
+  const it = spawnBag(BAGS.meal);
+  Object.assign(it, { state: 'free', x: DISPENSER.x + 0.15, y: 0.9, z: DISPENSER.z + 0.45, vx: 0, vy: 0, vz: 0.6, spinY: 0 }); it.g.visible = true;
+  beep(700, .08, 'sine', .05); setTimeout(() => beep(900, .1, 'sine', .05), 90);
+  say('🍽 A meal tray! Pick it up and carry it to a passenger.', 'good');
+}
+function deliverMeals() {
+  for (const it of items) {
+    if (it.type !== BAGS.meal || it.state === 'gone') continue;
+    const p = passengers.find(p => p.state === 'seated' && S.t - (p.fedT ?? -99) > 45 && Math.hypot(p.x - it.x, p.z - it.z) < 0.85 && it.y < 1.7);
+    if (!p) continue;
+    it.state = 'gone'; it.g.visible = false; p.fedT = S.t;
+    if (inAir()) S.needs.hunger = Math.min(100, S.needs.hunger + MEAL_FILL);
+    shout(p, pick(['Yum!', 'Chicken! My favourite!', 'Is this pasta?', 'Thank you!', 'Finally, food!', 'Nom nom nom']), 2.5);
+    beep(520, .1, 'triangle', .05);
+    say(`🍽 ${p.name} got a meal. ${passengers.filter(q => q.state === 'seated' && S.t - (q.fedT ?? -99) > 45).length} still hungry.`, 'good');
+  }
+}
 function cargoHost(dt) {
+  deliverMeals();
   for (const it of items) {
     if (it.state === 'gone') continue;
     const k = it.type;
@@ -196,7 +221,7 @@ function autoLoad() {
   if (need <= 0) return say(people ? `🤖 AUTO LOAD: ${people} passenger${people > 1 ? 's' : ''} flying to their seats! (The bags are all aboard already.)` : '🧳 The bags and passengers are all aboard already!', 'good');
   // free spots on the cargo bay floor
   const spots = [];
-  for (const z of [0, 1, 2, 3].map(i => REAR - 0.35 - i * 0.65)) for (const x of [-0.9, -0.3, 0.3, 0.9]) if (!items.some(i => i.state !== 'gone' && Math.hypot(i.x - x, i.z - z) < 0.5)) spots.push([x, z]);
+  for (const z of [0, 1, 2, 3].map(i => REAR - 0.35 - i * 0.65)) for (const x of [-0.9, -0.3, 0.3, 0.9]) if (walkable(x, z) && !items.some(i => i.state !== 'gone' && Math.hypot(i.x - x, i.z - z) < 0.5)) spots.push([x, z]);
   const pc = { x: BELT_X - 1.6, z: BELT_END - 2.2 };
   const pool = items.filter(i => !i.extra && !i.type.cage && i.type !== BAGS.nuke && !i.type.floaty && ['pile', 'free', 'ride'].includes(i.state) && !insideHull(i.x, i.z))
     .sort((a, b) => Math.hypot(a.x - pc.x, a.z - pc.z) - Math.hypot(b.x - pc.x, b.z - pc.z));

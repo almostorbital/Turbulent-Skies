@@ -109,9 +109,9 @@ function updatePassengerNeeds(dt, dead, openings) {
     S.nextStroll = rand(12, 22);
     const sitters = passengers.filter(p => p.state === 'seated' && !p.calling);
     if (!S.seatbelt && sitters.length) {
-      const p = pick(sitters), d = lavDoors.R;
+      const p = pick(sitters), bz = (BATH.z0 + BATH.z1) / 2;
       p.state = 'walk'; setPose(p, 'stand'); p.then = 'lav';
-      p.path = [{ x: p.seat.x, z: p.seat.z - 0.7 }, { x: 0, z: p.seat.z - 0.7 }, { x: 0, z: d.z0 + 0.4 }, { x: d.x - 0.35, z: d.z0 + 0.4 }];
+      p.path = [{ x: p.seat.x, z: p.seat.z - 0.7 }, { x: 0, z: p.seat.z - 0.7 }, { x: 0, z: bz }, { x: BATH.toilet.x - 0.3, z: bz }];
     }
   }
   for (const p of passengers) {
@@ -160,7 +160,7 @@ function updateEffects(dt, flight) {
     emitLocal(smokeFx, s * rand(0.5, W), rand(0.3, 2.2), hole.seg.z + rand(-2, 2), s * 6, 0, 2, 0xffffff, .25, 1, 3, .35);
   }
   for (const f of S.faults) if (f.id === 'toilet' && Math.random() < dt * 18) {
-    emitLocal(smokeFx, rand(LAV_X - 0.5, W - 0.2), 0.03, rand(CARGO + 0.3, CARGO + 2), rand(-.3, .3), 0, rand(-.3, .3), 0x3399ff, .4, 2, 2, .7);
+    emitLocal(smokeFx, rand(BATH.x0 - 0.4, W - 0.2), 0.03, rand(BATH.z0 + 0.1, BATH.z1 - 0.1), rand(-.3, .3), 0, rand(-.3, .3), 0x3399ff, .4, 2, 2, .7);
   }
   const elec = S.faults.some(f => f.id === 'elec');
   if (elec && Math.random() < dt * 6) for (let i = 0; i < 6; i++) emitLocal(fireFx, rand(-.5, .5), ceilAt(CPT.z + 0.2) - 0.35, CPT.z + 0.2, rand(-2, 2), rand(-3, 0), rand(-2, 2), 0xfff066, .08, .4, 0);
@@ -316,6 +316,7 @@ function update(dt) {
   updateFPArms(dt);
   handItems['🧯'].visible = S.view === 'first' && !S.held && !S.driving && tools.some(i => i.startsWith('🧯'));
   handItems['🔫'].visible = S.view === 'first' && !S.held && !S.driving && tools.some(i => i.startsWith('🔫'));
+  extinguisher.visible = !tools.some(i => i.startsWith('🧯'));   // (out of its holder while someone has it)
   // in third person it's in your character's right hand
   const handPt = S.view === 'third' && !S.held && !S.driving && ME && ME.rag && ME.g.visible ? ME.rag.pos[6] : null;
   for (const k in bodyTools) {
@@ -434,7 +435,7 @@ function updateHud(prog, speed, tools, si) {
   for (const k in SERVICES) {
     const s = SERVICES[k], cd = S.cd[k];
     const status = k === 'belt' ? `<b class="${S.seatbelt ? 'wait' : 'ok'}">${S.seatbelt ? 'ON' : 'OFF'}</b>` : cd > 0 ? `<b class="wait">${Math.ceil(cd)}s</b>` : '<b class="ok">READY</b>';
-    sv += `<div class="sv"><span>${s.icon}</span><span>${s.name}<small>${s.where}</small></span>${status}</div>`;
+    sv += `<div class="sv"><span>${s.icon}</span><span>${s.name}<small>${s.where}</small></span>${s.manual ? '' : status}</div>`;
   }
   $('svc').innerHTML = sv;
 
