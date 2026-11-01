@@ -26,13 +26,15 @@ function islandAt(x, z) { for (const it of scenery) if (it.kind === 'island') { 
 function startSkydive() {
   plane.updateMatrixWorld(true);
   _sw.set(P.x, P.y, P.z).applyMatrix4(plane.matrixWorld);
-  P.sky = { x: _sw.x, y: _sw.y, z: _sw.z, vx: 0, vy: P.vy || 0, vz: 0, chute: false, island: null, t: 0, splashT: 0 };
+  // (a quick fall: a moment's whoosh and you're most of the way down already)
+  P.sky = { x: _sw.x, y: Math.min(_sw.y, SEA_Y + 130), z: _sw.z, vx: 0, vy: -30, vz: 0, chute: false, island: null, t: 0, splashT: 0 };
+  $('flash').style.opacity = 0.6; sweep(900, 200, 0.6, 'sine', 0.06);
   P.falling = false; $('fade').style.opacity = 0;
   if (ME) { ME.rag = null; ME.g.visible = false; }
   // make sure there's an island in reach, a little ahead and to one side of where you'd land
   let best = null, bd = 1e9;
   for (const it of scenery) if (it.kind === 'island') { const d = Math.hypot(it.o.position.x - _sw.x, it.o.position.z - _sw.z); if (d < bd) { bd = d; best = it; } }
-  if (best && bd > 170) best.o.position.set(_sw.x + rand(-70, 70), SEA_Y, _sw.z - rand(60, 130));
+  if (best && bd > best.r + 25) best.o.position.set(_sw.x + rand(-1, 1) * (best.r * 0.5 + 25), SEA_Y, _sw.z - best.r * 0.6 - rand(15, 35));
   if (best) best.hold = true;   // (it drifts back behind the plane with you; don't let it be recycled ahead)
   say('🪂 You fell out of the plane! Steer for an island (WASD) and open your parachute (Space)!', 'bad');
 }
@@ -67,8 +69,8 @@ function updateSkydive(dt) {
     // falling: fast until the parachute opens, then gently; steer with WASD either way
     if (S.jump && !s.chute) { s.chute = true; sweep(300, 120, 0.4, 'sawtooth', 0.05); say('🪂 Parachute open! Steer for the island.', 'good'); }
     S.jump = false;
-    if (!s.chute && s.y < SEA_Y + 70) { s.chute = true; say('🪂 Your parachute opened by itself. Phew!'); }
-    const term = s.chute ? -5 : -48, steer = s.chute ? 9 : 14;
+    if (!s.chute && s.y < SEA_Y + 35) { s.chute = true; say('🪂 Your parachute opened by itself. Phew!'); }
+    const term = s.chute ? -9 : -60, steer = s.chute ? 11 : 16;
     s.vy += (term - s.vy) * Math.min(1, dt * (s.chute ? 2 : 0.35)) - (s.chute ? 0 : 9.8 * dt * 0.2);
     s.vx += ((fx * fwd + rx * side) * steer - s.vx) * Math.min(1, dt * 1.5);
     s.vz += ((fz * fwd + rz * side) * steer - s.vz) * Math.min(1, dt * 1.5);
