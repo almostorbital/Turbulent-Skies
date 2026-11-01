@@ -37,7 +37,7 @@ const D2R = Math.PI / 180;
 // CHAR shrinks every person a little, so the plane, seats, doors and vehicles are roomy enough for them
 const CHAR = 0.85, EYE = 1.42, TOTAL = 300;
 const PLANE_SCALE = 13, K = PLANE_SCALE / 20;
-const HULL_X = 2.67 * K, W = 2.6 * K;                            // the outside skin, and the inside of the wall
+const HULL_X = 2.67 * K, W = 2.49 * K;                           // the outside skin, and the inside of the wall
 const wallX = () => W;                                           // (the walls go straight up)
 const NOSE = -9 * K, BULK = -6 * K, REAR = 8.95 * K;
 // the model's holes: an exit door each side, and three windows each side (z from, z to; and how high)
@@ -60,7 +60,9 @@ function hullTab(z, k) {
   for (let i = 1; i < T.length; i++) if (z <= T[i][0]) { const a = T[i - 1], b = T[i], f = (z - a[0]) / (b[0] - a[0]); return a[k] + (b[k] - a[k]) * f; }
   return T[T.length - 1][k];
 }
-const hullHW = z => hullTab(z, 1), ceilAt = z => hullTab(z, 2);
+// (the table is the skin; the model's walls and roof have some thickness, so the inside is a little smaller)
+const WALL_T = 0.07, ROOF_T = 0.1;
+const hullHW = z => Math.max(0, hullTab(z, 1) - WALL_T), ceilAt = z => Math.max(0, hullTab(z, 2) - ROOF_T);
 const ROOT = HULL_X, WING_IN = 20 * K, WING_OUT = 25.6 * K, FUEL_X = 19.23 * K, BBQ_X = 16 * K;   // big wings: room for a barbecue
 // the engines sit on the wings, sticking out well in front of them
 const ENG_X = 8.43 * K, ENG_Y = -0.36 * K, ENG_Z0 = -9.94 * K, ENG_Z1 = -0.96 * K, ENG_R = 2.1 * K, PROP_Z = -9.06 * K;

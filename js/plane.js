@@ -60,7 +60,7 @@ function hullSegment(z0, z1, [w0, w1]) {
   WINDOWS.forEach((w, i) => hullSegment(ringEnds[i], ringEnds[i + 1], w));
   // the carpet, a thin layer on the model's own floor; it follows the walls as the nose and tail narrow
   // (and stays well inside them there, where the plane's sides curve in under the floor)
-  const floorHW = z => hullHW(z) + 0.04 - 0.21 * clamp((z - 2.4) / 0.6, 0, 1) - 0.21 * clamp((-4.4 - z) / 0.6, 0, 1);
+  const floorHW = z => hullHW(z) - 0.15 * clamp((z - 2.4) / 0.6, 0, 1) - 0.15 * clamp((-4.4 - z) / 0.6, 0, 1);
   const fl = new THREE.Shape(), zs = [];
   for (let z = NOSE - 0.6; z < REAR; z += 0.25) zs.push(z);
   zs.push(REAR);
@@ -153,10 +153,10 @@ function hullSegment(z0, z1, [w0, w1]) {
   box(0.2, 0.04, 0.26, M.yellow, -CW, 0.84, CK + 0.1); box(0.04, 0.1, 0.04, M.white, -CW, 0.9, CK + 0.1);
   station('belt', 'Seatbelt sign switch', 'Cockpit', box(0.4, 0.3, 0.5, M.hit, -CW, 0.9, CK + 0.1), { service: 'belt' });
   // overhead panel, up against the ceiling
-  const oy = ceilAt(CK + 0.4);
-  const over = box(1.0, 0.25, 0.8, M.panel, 0, oy - 0.125, CK + 0.4);
-  const overFace = new THREE.Mesh(new THREE.PlaneGeometry(0.95, 0.75), M.switches);
-  overFace.rotation.x = Math.PI / 2; overFace.position.set(0, oy - 0.26, CK + 0.4); plane.add(overFace);
+  const oy = ceilAt(CK + 0.4) - 0.3;   // (well under the roof, which curves down at the sides)
+  const over = box(0.7, 0.12, 0.6, M.panel, 0, oy - 0.06, CK + 0.4);
+  const overFace = new THREE.Mesh(new THREE.PlaneGeometry(0.66, 0.56), M.switches);
+  overFace.rotation.x = Math.PI / 2; overFace.position.set(0, oy - 0.125, CK + 0.4); plane.add(overFace);
   // the blanket closet, tucked into the back corner of the cockpit
   const CLZ = BULK - 0.25, CLX = hullHW(CLZ) - 0.25;
   const closet = box(0.45, 1.6, 0.4, M.bin, CLX, 0.8, CLZ);
@@ -205,14 +205,14 @@ function hullSegment(z0, z1, [w0, w1]) {
   station('lavdoorR', 'Bathroom door', 'Cabin', bdoor, { lavDoor: 'R' });
 
   // ---- cabin: overhead bins, lights, seats, movie screen
-  const binZ = (GALLEY + CARGO) / 2, binL = CARGO - GALLEY - 0.4, BIN_Y = WIN_Y1 + 0.3;
+  const binZ = (GALLEY + CARGO) / 2, binL = CARGO - GALLEY - 0.4, BIN_Y = WIN_Y1 + 0.24, BIN_H = 0.36;   // (tucked in under the curve of the roof)
   for (const s of [-1, 1]) {
     const bx = s * (W - 0.42);
     // (up above the big windows)
-    box(0.8, 0.45, binL, M.bin, bx, BIN_Y, binZ);
-    for (let z = GALLEY + 0.4; z <= CARGO - 0.3; z += 1.6) { box(0.01, 0.42, 0.02, M.frame, bx - s * 0.405, BIN_Y, z); box(0.012, 0.04, 0.3, M.dark, bx - s * 0.41, BIN_Y + 0.1, z + 0.8); }
-    box(0.35, 0.03, binL, M.lamp, s * (W - 0.72), BIN_Y - 0.24, binZ);
-    for (const z of ROWS) beltSigns.push(box(0.1, 0.05, 0.16, M.dark, s * (W - 0.6), BIN_Y - 0.26, z - 0.4));
+    box(0.8, BIN_H, binL, M.bin, bx, BIN_Y, binZ);
+    for (let z = GALLEY + 0.4; z <= CARGO - 0.3; z += 1.6) { box(0.01, BIN_H - 0.03, 0.02, M.frame, bx - s * 0.405, BIN_Y, z); box(0.012, 0.04, 0.3, M.dark, bx - s * 0.41, BIN_Y + 0.08, z + 0.8); }
+    box(0.35, 0.03, binL, M.lamp, s * (W - 0.72), BIN_Y - BIN_H / 2 - 0.02, binZ);
+    for (const z of ROWS) beltSigns.push(box(0.1, 0.05, 0.16, M.dark, s * (W - 0.6), BIN_Y - BIN_H / 2 - 0.04, z - 0.4));
   }
   box(0.3, 0.02, binL, M.lamp, 0, ceilAt(0) - 0.04, binZ);                  // ceiling light strip
   ROWS.forEach((z, ri) => SEAT_X.forEach((x, i) => {
@@ -251,7 +251,6 @@ function hullSegment(z0, z1, [w0, w1]) {
   for (const side of ['L', 'R']) {
     const s = side === 'L' ? -1 : 1, Side = side === 'L' ? 'Left' : 'Right';
     const wx = ROOT + 0.85;
-    box(1.6, 0.02, DW, M.dark, s * wx, wingY(wx, (DOOR_Z0 + DOOR_Z1) / 2) + 0.012, (DOOR_Z0 + DOOR_Z1) / 2);   // painted walkway outside the door
     const panel = new THREE.Group();                                      // the outer wing: it can break off
     plane.add(panel);
     const tipZ = (le(WING_OUT) + te(WING_OUT)) / 2;
@@ -464,7 +463,7 @@ function smoothNormals(tris) {
     const area = new THREE.Vector3().subVectors(t[1], t[0]).cross(new THREE.Vector3().subVectors(t[2], t[0])).length();
     for (const v of t) { const k = key(v); if (!at.has(k)) at.set(k, []); at.get(k).push([t.n, area]); }
   }
-  if (tris.filter(t => t[0].nrm).length > tris.length / 2) {
+  if (!window.__ownNormals && tris.filter(t => t[0].nrm).length > tris.length / 2) {
     // the model brought its own normals: use those (turned round along with any face that was)
     // (and any normal pointing the opposite way to its face, from a muddled bit of the model, is turned round too;
     // but not on the thin slivers the cutting leaves, whose own facing is too rough to go by)
@@ -515,7 +514,7 @@ function boxyPlaneTris() {
 // just inside the skin all round the model's holes there
 function glazeCockpit() {
   const pos = [], quad = (a, b, c, d) => pos.push(...a, ...b, ...c, ...a, ...c, ...d);
-  const top = z => ceilAt(z) + 0.05, hw = z => hullHW(z) + 0.05, Z0 = -10 * K, Z1 = -6.16 * K;
+  const top = z => ceilAt(z) - 0.02, hw = z => hullHW(z) + 0.02, Z0 = -10 * K, Z1 = -6.16 * K;   // (just inside the skin, so it never shows outside it)
   for (let za = Z0; za < Z1 - 1e-6; za += 0.15) {
     const zb = Math.min(za + 0.15, Z1);
     for (const s of [-1, 1]) quad([s * hw(za), WIN_Y0, za], [s * hw(zb), WIN_Y0, zb], [s * hw(zb), top(zb), zb], [s * hw(za), top(za), za]);
@@ -574,11 +573,10 @@ function dressPlane(scene) {
   // the cockpit's furniture from the model: the instrument panel, the yokes and the pedestal (and the
   // partition walls behind the seats)
   // (every corner well inside the hull: the skin's own corners are out on the hull)
-  const cockpitPart = t => t.every(v => v.z > -10.6 * K && v.z < -5.9 * K && Math.abs(v.x) < hullHW(v.z) - 0.06 && v.y > 0.07 && v.y < Math.min((v.z < -8.5 * K ? 2.0 : 3.0) * K, ceilAt(v.z) - (v.z < -8.5 * K ? 0.2 : 0.06)));
+  const cockpitPart = t => t.every(v => v.z > -10.6 * K && v.z < -5.9 * K && Math.abs(v.x) < hullHW(v.z) + WALL_T - 0.06 && v.y > 0.07 && v.y < Math.min((v.z < -8.5 * K ? 2.0 : 3.0) * K, ceilAt(v.z) + ROOF_T - (v.z < -8.5 * K ? 0.2 : 0.06)));
   const parts = { main: [], segs: segments.map(() => ({ L: [], R: [] })), wingL: [], wingR: [], cockpit: [] };
   for (const t of tris) {
     const c = t.c, n = t.n, ax = Math.abs(c.x), wall = ax > HULL_X - 0.15 && Math.abs(n.x) > 0.7;
-    if (n.y < -0.5 && c.z > REAR && c.z < RAMP_Z1 && ax < RAMP_W0 + 0.15) continue;           // the ramp opening
     if (ax > WING_IN && c.z < 12) { parts[c.x < 0 ? 'wingL' : 'wingR'].push(t); continue; }
     if (cockpitPart(t)) { parts.cockpit.push(t); continue; }
     const si = wall && c.y > SEG_Y0 && c.y < SEG_Y1 ? segments.findIndex(sg => c.z > sg.z0 && c.z < sg.z1) : -1;
@@ -589,16 +587,17 @@ function dressPlane(scene) {
   const fin = t => t.c.z > 19.2 * K && t.c.y > 2.95 * K && Math.abs(Math.abs(t.c.x) - 8.18 * K) < 0.5 * K;   // (the two tail fins, on the ends of the tailplane)
   // (the model's walls have some thickness, and it has inside walls of its own: anything inside the hull
   // gets cabin colours)
-  const inner = t => Math.abs(t.c.x) < hullHW(t.c.z) - 0.02 && t.c.y > 0.02 && t.c.y < ceilAt(t.c.z) - 0.02 && t.c.z > NOSE - 1 && t.c.z < REAR + 7;
+  const inner = t => Math.abs(t.c.x) < hullHW(t.c.z) + WALL_T - 0.02 && t.c.y > 0.02 && t.c.y < ceilAt(t.c.z) + ROOF_T - 0.02 && t.c.z > NOSE - 1 && t.c.z < REAR + 7;
   const paint = t => {
     const c = t.c, n = t.n;
     if (body(t) && inner(t)) {
       // the model's fittings get their colours: steel food dispensers, a dark extinguisher holder, a red ramp button
-      const near = (o, rx, ry, rz) => Math.abs(c.x - o.x) < rx && Math.abs(c.y - o.y) < ry && Math.abs(c.z - o.z) < rz;
-      if (near(DISPENSER, 0.32, 0.7, 0.3)) return PC.steel;
-      if (near(EXT_HOLDER, 0.32, 0.35, 0.2)) return PC.panel;
-      if (near(RAMP_BUTTON, 0.25, 0.55, 0.45)) return PC.button;
-      return t.n.y < -0.7 || c.y > ceilAt(c.z) - 0.3 ? PC.ceiling : PC.lining;
+      // (every corner in the fitting's box, and standing out from the wall it's on)
+      const all = (o, rx, ry, rz, out) => t.every(v => Math.abs(v.x - o.x) < rx && Math.abs(v.y - o.y) < ry && Math.abs(v.z - o.z) < rz && out(v));
+      if (all(DISPENSER, 0.32, 0.7, 0.3, v => v.z > BULK + 0.06)) return PC.steel;
+      if (all(EXT_HOLDER, 0.32, 0.35, 0.2, v => v.z > BULK + 0.06)) return PC.panel;
+      if (all(RAMP_BUTTON, 0.25, 0.55, 0.45, v => Math.abs(v.x) < hullHW(v.z) - 0.01)) return PC.button;
+      return t.n.y < -0.55 ? PC.ceiling : PC.lining;   // (by which way it faces: a clean line where the roof curves into the walls)
     }
     if (fin(t)) return PC.blue;                                   // the tail fin
     if (!body(t)) return PC.wing;                                 // wings, tailplane
@@ -608,7 +607,7 @@ function dressPlane(scene) {
     if (flank && c.y > STRIPE[2] && c.y < STRIPE[3]) return PC.red;
     return PC.white;
   };
-  const inside = t => t.n.y > 0.7 || t.c.y > 3.3 ? PC.ceiling : PC.lining;
+  const inside = t => t.n.y > 0.55 ? PC.ceiling : PC.lining;
   const cockpitPaint = t => {
     const c = t.c;
     if (c.z > -6.3 * K) return PC.lining;                         // the partition walls
