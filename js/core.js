@@ -314,7 +314,7 @@ function sayLocal(text, kind = '') {
 }
 
 // ---------------------------------------------------------------- audio
-let AC = null, OUT = null, droneGain = null, windGain = null, droneOsc = null;
+let AC = null, OUT = null, droneGain = null, windGain = null, droneOsc = null, rainGain = null;
 const VOLUME = 2.5;   // everything goes through one master volume (and a limiter, so loud bits don't crackle)
 function initAudio() {
   if (AC) return;
@@ -332,6 +332,11 @@ function initAudio() {
     const bp = AC.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 500; bp.Q.value = 0.6;
     windGain = AC.createGain(); windGain.gain.value = 0.0;
     noise.connect(bp).connect(windGain).connect(OUT); noise.start();
+    // rain: a soft hiss, pattering on the roof
+    const hp = AC.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1800;
+    const lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 6000;
+    rainGain = AC.createGain(); rainGain.gain.value = 0;
+    noise.connect(hp).connect(lp).connect(rainGain).connect(OUT);
   } catch (e) { AC = null; }
 }
 function beep(freq, dur = 0.12, type = 'square', vol = 0.05) {

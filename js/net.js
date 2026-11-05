@@ -270,7 +270,7 @@ function buildSnap() {
   });
   return {
     t: 'snap',
-    S: { phase: S.phase, dist: S.dist, integrity: S.integrity, seatbelt: S.seatbelt, turb: S.turb, roll: S.roll, needs: S.needs, cd: S.cd, stormOn: S.stormOn,
+    S: { phase: S.phase, dist: S.dist, integrity: S.integrity, seatbelt: S.seatbelt, turb: S.turb, roll: S.roll, needs: S.needs, cd: S.cd, stormOn: S.stormOn, rainOn: !!S.rainOn,
       ws: S.ws || 0, alt: S.alt, pitch: S.pitch, toSpeed: S.toSpeed, liftoff: S.liftoff, landX: S.landX, touched: S.touched, landQuality: S.landQuality, lpitch: S.lpitch,
       fixed: S.fixed, falls: S.falls, ejected: S.ejected, lostBags: S.lostBags },
     F: S.faults.map(f => [f.id, f.side, f.step, r2(f.age), f.mash, f.uid]),

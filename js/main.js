@@ -193,8 +193,10 @@ function updateEffects(dt, flight) {
   const dark = S.faults.some(f => f.id === 'mayday' && f.step < 3);   // (the power's out until it's reset)
   const alarm = S.faults.some(f => f.id === 'mayday');
   alarmLights.forEach((l, i) => { l.intensity = alarm && Math.sin(S.t * 7 + i * Math.PI) > 0 ? 2.2 : 0; });
-  for (const l of cabinLights) l.intensity = dark ? (Math.random() < .04 ? 0.4 : 0.03) : elec ? (Math.random() < .3 ? 0.05 : 0.45) : 0.5 + (1 - DAY.light) * 0.25;
-  M.lamp.color.setHex(elec && Math.random() < .3 ? 0x333333 : 0xfff3d6);
+  // (by night the cabin lights go down low and warm)
+  for (const l of cabinLights) { l.intensity = dark ? (Math.random() < .04 ? 0.4 : 0.03) : elec ? (Math.random() < .3 ? 0.05 : 0.45) : 0.5 - NIGHT * 0.2; l.color.copy(CABIN_DAY).lerp(CABIN_NIGHT, NIGHT); }
+  if (elec && Math.random() < .3) M.lamp.color.setHex(0x333333); else M.lamp.color.copy(LAMP_DAY).lerp(LAMP_NIGHT, NIGHT);
+  updateCosy(dt, dark);
   for (const b of beltSigns) b.material = S.seatbelt ? M.yellow : M.dark;
   for (const n of navLights) n.m.visible = (S.t % n.blink) < 0.12;
   // the cabin movie
@@ -377,14 +379,16 @@ function update(dt) {
 
   // --- sky & fog (thick grey soup inside a storm)
   updateDayNight(dt, scene.background);
-  scene.background.lerp(SKY_STORM, Math.max(sky.stormNear * 0.75, S.turb));
+  updateRain(dt, sky.stormNear);
+  scene.background.lerp(SKY_STORM, Math.max(sky.stormNear * 0.75, S.turb, RAIN.amt * 0.45));
   scene.fog.color.copy(scene.background);
-  scene.fog.near = 400 - S.turb * 395;
-  scene.fog.far = 2600 - S.turb * 2440;
+  scene.fog.near = 400 - S.turb * 395 - RAIN.amt * 250;
+  scene.fog.far = 2600 - S.turb * 2440 - RAIN.amt * 1300;
   S.flash = Math.max(0, S.flash - dt * 2.5);
   ambient.intensity = 0.1 + 0.15 * DAY.light;
   hemi.intensity = 0.2 + 0.55 * DAY.light + S.flash * 1.5 - sky.stormNear * 0.35;
-  sun.intensity = (DAY.light > 0.15 ? 0.15 + 0.65 * DAY.light : 0.25) - sky.stormNear * 0.5;   // (by night it's the moon)
+  sun.intensity = (DAY.light > 0.15 ? 0.15 + 0.65 * DAY.light : 0.25) - Math.max(sky.stormNear * 0.5, RAIN.amt * 0.25);   // (by night it's the moon)
+  if (rainGain) rainGain.gain.value = RAIN.amt * (insideHull(P.x, P.z) ? 0.035 : 0.08);
   if (windGain) windGain.gain.value = S.phase === 'airport' ? 0.01 : (!insideHull(P.x, P.z) ? 0.16 : 0.025) + openings * 0.04 + S.turb * 0.05;
 
   S.hudT -= dt;
